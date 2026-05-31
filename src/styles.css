@@ -2467,11 +2467,22 @@ body {
 .recommended-song {
   align-items: center;
   border-radius: 8px;
+  cursor: pointer;
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr) 52px 52px;
   gap: 20px;
   min-height: 126px;
   padding: 16px;
+}
+
+.recommended-list {
+  display: grid;
+  gap: 12px;
+}
+
+.recommended-song.playing {
+  border-color: rgba(255, 143, 189, 0.55);
+  box-shadow: 0 0 0 2px rgba(255, 143, 189, 0.22);
 }
 
 .recommended-song img {

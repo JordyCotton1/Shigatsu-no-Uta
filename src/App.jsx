@@ -367,6 +367,24 @@ export function App() {
       .slice(0, 8);
   }, [tracks]);
 
+  const recommendedTracks = useMemo(() => {
+    const playableTracks = tracks.filter((track) => track?.audio_url);
+    const albumCounts = playableTracks.reduce((counts, track) => {
+      const album = track.album?.trim();
+      if (!album) return counts;
+      counts.set(album.toLowerCase(), (counts.get(album.toLowerCase()) || 0) + 1);
+      return counts;
+    }, new Map());
+
+    return [...playableTracks]
+      .sort((a, b) => {
+        const albumScoreA = albumCounts.get(a.album?.trim().toLowerCase()) || 0;
+        const albumScoreB = albumCounts.get(b.album?.trim().toLowerCase()) || 0;
+        return albumScoreB - albumScoreA || new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      })
+      .slice(0, 5);
+  }, [tracks]);
+
   const currentTrackIsYoutube = Boolean(currentTrack && (isYoutubeUrl(currentTrack.audio_url) || currentTrack.storage_path?.startsWith('youtube:')));
   const canStream = Boolean(currentTrack?.audio_url && !currentTrackIsYoutube);
   const canPlay = Boolean(currentTrack?.audio_url);
@@ -1945,18 +1963,34 @@ export function App() {
                 </article>
               )}
 
-              <div className="section-head recommended-head"><h2><span className="section-flower">✿</span> Cancion recomendada para ti</h2></div>
-              <article className="recommended-song">
-                <img src={currentTrack?.cover_url || recommendedTrack.cover} alt={currentTrack?.title || recommendedTrack.title} />
-                <div>
-                  <strong>{currentTrack?.title || recommendedTrack.title}</strong>
-                  <span>{currentTrack?.artist || recommendedTrack.artist}</span>
-                </div>
-                <button className="like-icon-button" type="button" onClick={() => currentTrack && addTrackToLikes(currentTrack)} disabled={!currentTrack}>
-                  <Heart size={21} />
-                </button>
-                <button className="more-button" type="button">...</button>
-              </article>
+              <div className="section-head recommended-head"><h2><span className="section-flower">✿</span> Canciones recomendadas para ti</h2></div>
+              <div className="recommended-list">
+                {recommendedTracks.length === 0 && <p className="empty-state">Sube canciones para crear recomendaciones.</p>}
+                {recommendedTracks.map((track, index) => (
+                  <article
+                    className={`recommended-song ${currentTrack?.id === track.id ? 'playing' : ''}`}
+                    key={track.id}
+                    onClick={() => playTrackQueue(recommendedTracks, index)}
+                  >
+                    <img src={track.cover_url || getDisplayChannelByGenre(track.genre).image} alt={track.title} />
+                    <div>
+                      <strong>{track.title}</strong>
+                      <span>{track.artist}{track.album ? ` - ${track.album}` : ''}</span>
+                    </div>
+                    <button
+                      className={`like-icon-button ${likedTrackIds.has(track.id) ? 'liked' : ''}`}
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        addTrackToLikes(track);
+                      }}
+                    >
+                      <Heart size={21} fill={likedTrackIds.has(track.id) ? 'currentColor' : 'none'} />
+                    </button>
+                    <button className="more-button" type="button" onClick={(event) => event.stopPropagation()}>...</button>
+                  </article>
+                ))}
+              </div>
 
               <div className="section-head"><h2>Canciones subidas</h2><span>{visibleTracks.length} canciones</span></div>
               <div className="track-list">
