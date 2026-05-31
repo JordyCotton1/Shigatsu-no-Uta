@@ -3740,6 +3740,36 @@ body {
 }
 
 @media (max-width: 760px) {
+  .notifications-menu {
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    top: calc(env(safe-area-inset-top, 0px) + 82px) !important;
+    width: auto !important;
+    max-height: calc(100dvh - 210px) !important;
+    border-radius: 8px !important;
+    padding: 10px !important;
+    z-index: 130 !important;
+  }
+
+  .notifications-menu button {
+    grid-template-columns: 52px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    min-height: 66px !important;
+    padding: 7px !important;
+  }
+
+  .notifications-menu img {
+    height: 52px !important;
+    width: 52px !important;
+  }
+
+  .notifications-menu strong,
+  .notifications-menu small {
+    max-width: 100% !important;
+    white-space: nowrap !important;
+  }
+
   .gmail-menu {
     left: auto !important;
     max-height: calc(100dvh - 70px) !important;

@@ -180,7 +180,9 @@ function getYoutubeEmbedUrl(url = '', playing = false) {
   const params = new URLSearchParams({
     autoplay: playing ? '1' : '0',
     controls: '0',
+    enablejsapi: '1',
     modestbranding: '1',
+    origin: window.location.origin,
     rel: '0',
     playsinline: '1'
   });
@@ -344,6 +346,7 @@ export function App() {
   const menuRef = useRef(null);
   const searchInputRef = useRef(null);
   const audioRef = useRef(null);
+  const youtubeFrameRef = useRef(null);
   const user = session?.user ?? null;
   const isAdmin = profile?.role === 'admin';
   const avatarPreviewUrl = useMemo(() => avatarFile ? URL.createObjectURL(avatarFile) : '', [avatarFile]);
@@ -749,6 +752,27 @@ export function App() {
     audioRef.current.muted = muted;
     audioRef.current.loop = repeatOn;
   }, [volume, muted, repeatOn, currentTrack?.audio_url]);
+
+  function postYoutubeCommand(command, args = []) {
+    if (!youtubeFrameRef.current?.contentWindow) return;
+    youtubeFrameRef.current.contentWindow.postMessage(JSON.stringify({
+      event: 'command',
+      func: command,
+      args
+    }), 'https://www.youtube.com');
+  }
+
+  useEffect(() => {
+    if (!currentTrackIsYoutube) return;
+
+    const timer = window.setTimeout(() => {
+      postYoutubeCommand('setVolume', [muted ? 0 : volume]);
+      postYoutubeCommand(muted ? 'mute' : 'unMute');
+      postYoutubeCommand(isPlaying ? 'playVideo' : 'pauseVideo');
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [currentTrackIsYoutube, isPlaying, muted, volume, youtubeEmbedUrl]);
 
   useEffect(() => {
     return () => {
@@ -2873,6 +2897,7 @@ export function App() {
         )}
         {youtubeEmbedUrl && isPlaying && (
           <iframe
+            ref={youtubeFrameRef}
             className="youtube-audio-frame"
             src={youtubeEmbedUrl}
             title={`YouTube - ${currentTrack.title}`}
