@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bell,
   ChevronDown,
@@ -455,6 +455,9 @@ export function App() {
   const pendingTracks = useMemo(() => (
     tracks.filter((track) => getTrackApprovalStatus(track) === 'pending')
   ), [tracks]);
+  const canCurrentUserSeeTrack = useCallback((track) => (
+    Boolean(track) && (isAdmin || getTrackApprovalStatus(track) === 'approved' || track.user_id === user?.id)
+  ), [isAdmin, user?.id]);
 
   const visibleTracks = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -727,7 +730,7 @@ export function App() {
       const seenTracks = new Set();
 
       for (const item of folderTracks) {
-        if (!likesFolderIds.has(item.folder_id) || !item.tracks || seenTracks.has(item.track_id)) continue;
+        if (!likesFolderIds.has(item.folder_id) || !canCurrentUserSeeTrack(item.tracks) || seenTracks.has(item.track_id)) continue;
         seenTracks.add(item.track_id);
         uniqueItems.push(item);
       }
@@ -735,8 +738,8 @@ export function App() {
       return uniqueItems;
     }
 
-    return folderTracks.filter((item) => item.folder_id === activeFolder.id && item.tracks);
-  }, [activeFolder, folderTracks, likesFolders]);
+    return folderTracks.filter((item) => item.folder_id === activeFolder.id && canCurrentUserSeeTrack(item.tracks));
+  }, [activeFolder, canCurrentUserSeeTrack, folderTracks, likesFolders]);
   const openedCatalogTracks = useMemo(() => {
     if (!openedCatalog) return [];
     return publicTracks.filter((track) => trackMatchesChannel(track, openedCatalog));
@@ -1353,6 +1356,12 @@ export function App() {
     loadTracks();
   }
 
+  async function rejectTrack(track) {
+    if (!isAdmin || !track?.id) return;
+    await deleteTrack(track);
+    setMessage('Cancion rechazada y eliminada.');
+  }
+
   async function saveCategoryCover(channel) {
     if (!isAdmin) return;
     if (!categoryCoversReady) {
@@ -1750,10 +1759,19 @@ export function App() {
 
   function focusSearchView() {
     setActiveView('search');
+    setOpenedCatalog(null);
     window.requestAnimationFrame(() => {
       searchInputRef.current?.focus();
       searchInputRef.current?.select();
     });
+  }
+
+  function openPremiumView() {
+    setActiveView('premium');
+    setOpenedCatalog(null);
+    setNotificationsOpen(false);
+    setProfileOpen(false);
+    setTrackInfoOpen(false);
   }
 
   function toggleQueue(queue, startIndex = 0) {
@@ -2041,7 +2059,7 @@ export function App() {
             <Library size={19} /> Tu biblioteca
           </button>
           <button className={activeView === 'upload' ? 'nav-active' : ''} onClick={() => setActiveView('upload')}><Upload size={19} /> Subir cancion</button>
-          <button className={activeView === 'premium' ? 'nav-active' : ''} onClick={() => setActiveView('premium')}><Crown size={19} /> Premium</button>
+          <button className={activeView === 'premium' ? 'nav-active' : ''} onClick={openPremiumView}><Crown size={19} /> Premium</button>
         </nav>
         <span className="sidebar-section-title">Playlists</span>
         <div className="genre-list">
@@ -2463,8 +2481,10 @@ export function App() {
                         <button className="row-play" type="button" onClick={() => selectTrack(track)} title="Revisar esta cancion"><Music2 size={16} /></button>
                         <div><strong>{track.title}</strong><span>{track.artist}{track.album ? ` - ${track.album}` : ''}</span></div>
                         <span>Pendiente</span>
-                        <button className="approve-button" type="button" onClick={() => approveTrack(track)}>Aprobar</button>
-                        <button className="danger-button" type="button" onClick={() => deleteTrack(track)}><Trash2 size={17} /></button>
+                        <div className="approval-actions">
+                          <button className="approve-button" type="button" onClick={() => approveTrack(track)}>Aprobar</button>
+                          <button className="reject-button" type="button" onClick={() => rejectTrack(track)}>Rechazar</button>
+                        </div>
                       </article>
                     ))}
                   </div>
@@ -2700,8 +2720,8 @@ export function App() {
                     const isLikesFolder = isLikesFolderName(folder.name) || folder.is_preview;
                     const likesFolderIds = new Set(likesFolders.map((likesItem) => likesItem.id));
                     const items = isLikesFolder
-                      ? folderTracks.filter((item) => likesFolderIds.has(item.folder_id) && item.tracks)
-                      : folderTracks.filter((item) => item.folder_id === folder.id && item.tracks);
+                      ? folderTracks.filter((item) => likesFolderIds.has(item.folder_id) && canCurrentUserSeeTrack(item.tracks))
+                      : folderTracks.filter((item) => item.folder_id === folder.id && canCurrentUserSeeTrack(item.tracks));
                     const uniqueTrackCount = new Set(items.map((item) => item.track_id)).size;
                     const folderName = isLikesFolder ? 'Tus me gusta' : folder.name;
                     return (
@@ -3085,7 +3105,7 @@ export function App() {
         <button className={activeView === 'search' ? 'active' : ''} type="button" onClick={focusSearchView}><Search size={24} /> Buscar</button>
         <button className={activeView === 'folders' ? 'active' : ''} type="button" onClick={() => setActiveView('folders')}><Library size={24} /> Tu biblioteca</button>
         <button className={activeView === 'upload' ? 'active' : ''} type="button" onClick={() => setActiveView('upload')}><Upload size={24} /> Subir cancion</button>
-        <button className={activeView === 'premium' ? 'active' : ''} type="button" onClick={() => setActiveView('premium')}><Crown size={24} /> Premium</button>
+        <button className={activeView === 'premium' ? 'active' : ''} type="button" onClick={openPremiumView}><Crown size={24} /> Premium</button>
       </nav>
     </main>
   );

@@ -2920,8 +2920,31 @@ body {
   white-space: nowrap;
 }
 
+.reject-button {
+  border: 1px solid rgba(255, 125, 182, 0.42);
+  border-radius: 999px;
+  background: rgba(255, 75, 120, 0.16);
+  color: #ff9bc5;
+  display: inline-grid;
+  font-size: 0.82rem;
+  font-weight: 900;
+  min-height: 34px;
+  min-width: 84px;
+  padding: 0 12px;
+  place-items: center;
+  white-space: nowrap;
+}
+
+.approval-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
 .pending-track-row {
-  grid-template-columns: 64px 44px minmax(0, 1fr) minmax(80px, 110px) 82px 44px;
+  grid-template-columns: 64px 44px minmax(0, 1fr) minmax(80px, 110px) minmax(176px, auto);
   gap: 10px;
 }
 
@@ -4326,5 +4349,38 @@ body {
   .player-progress,
   .player-extra {
     display: none !important;
+  }
+
+  .mobile-tabbar {
+    pointer-events: auto !important;
+    z-index: 140 !important;
+  }
+
+  .mobile-tabbar button {
+    pointer-events: auto !important;
+    touch-action: manipulation;
+  }
+
+  .pending-track-row {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .pending-track-row > img,
+  .pending-track-row > .row-play {
+    display: none;
+  }
+
+  .pending-track-row > span {
+    grid-column: 1 / -1;
+  }
+
+  .approval-actions {
+    grid-column: 1 / -1;
+    justify-content: stretch;
+  }
+
+  .approval-actions button {
+    flex: 1;
+    min-width: 0;
   }
 }
