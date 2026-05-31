@@ -159,6 +159,92 @@ function isYoutubeUrl(url = '') {
   return /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//i.test(url.trim());
 }
 
+function hashText(text = '') {
+  return [...text].reduce((hash, character) => {
+    const nextHash = ((hash << 5) - hash) + character.charCodeAt(0);
+    return nextHash & nextHash;
+  }, 0);
+}
+
+function createGeneratedCategoryCover(name = 'Nuevo', index = 0) {
+  const cleanName = name.replace(/\s+mix$/i, '').trim() || 'Nuevo';
+  const hash = Math.abs(hashText(cleanName));
+  const palettes = [
+    ['#2d0b48', '#ff5aa5', '#ffcf4a', '#8b5cf6'],
+    ['#061a2d', '#42d9ff', '#ffd166', '#ff7ab6'],
+    ['#160606', '#f97316', '#f43f5e', '#111827'],
+    ['#12103a', '#f472b6', '#a78bfa', '#22d3ee'],
+    ['#102315', '#3dd17a', '#f8fafc', '#f59e0b']
+  ];
+  const [dark, accent, glow, deep] = palettes[(hash + index) % palettes.length];
+  const titleWords = `${cleanName} Mix`.toUpperCase().split(/\s+/);
+  const titleLineOne = titleWords.length > 2 ? titleWords.slice(0, -1).join(' ') : cleanName.toUpperCase();
+  const titleLineTwo = titleWords.length > 2 ? titleWords.at(-1) : 'MIX';
+  const moonX = 170 + (hash % 680);
+  const moonY = 120 + (hash % 120);
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+      <defs>
+        <radialGradient id="sky" cx="50%" cy="35%" r="78%">
+          <stop offset="0%" stop-color="${accent}" stop-opacity=".55"/>
+          <stop offset="46%" stop-color="${deep}"/>
+          <stop offset="100%" stop-color="${dark}"/>
+        </radialGradient>
+        <radialGradient id="glow" cx="50%" cy="52%" r="42%">
+          <stop offset="0%" stop-color="${glow}" stop-opacity=".4"/>
+          <stop offset="70%" stop-color="${accent}" stop-opacity=".08"/>
+          <stop offset="100%" stop-color="${accent}" stop-opacity="0"/>
+        </radialGradient>
+        <filter id="soft">
+          <feGaussianBlur stdDeviation="7"/>
+        </filter>
+        <filter id="shadow">
+          <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000" flood-opacity=".55"/>
+        </filter>
+      </defs>
+      <rect width="1024" height="1024" fill="url(#sky)"/>
+      <circle cx="${moonX}" cy="${moonY}" r="58" fill="${glow}" opacity=".95"/>
+      <circle cx="${moonX - 18}" cy="${moonY - 10}" r="64" fill="#fff" opacity=".08"/>
+      <circle cx="512" cy="536" r="354" fill="url(#glow)"/>
+      <path d="M0 764 C150 644 260 694 370 614 C500 516 590 566 716 476 C822 402 914 412 1024 350 L1024 1024 L0 1024 Z" fill="#050507" opacity=".46"/>
+      <path d="M0 830 C184 724 352 752 510 688 C648 630 790 658 1024 560 L1024 1024 L0 1024 Z" fill="#06030a" opacity=".74"/>
+      <g opacity=".82">
+        <path d="M0 165 C150 100 286 106 424 68" stroke="${accent}" stroke-width="12" stroke-linecap="round" opacity=".45"/>
+        <path d="M1024 110 C872 102 754 118 636 58" stroke="${accent}" stroke-width="11" stroke-linecap="round" opacity=".38"/>
+        ${Array.from({ length: 34 }).map((_, petalIndex) => {
+          const x = (petalIndex * 89 + hash) % 1024;
+          const y = (petalIndex * 53 + hash) % 780;
+          const rotate = (petalIndex * 37 + hash) % 360;
+          const scale = 0.65 + ((petalIndex + hash) % 6) / 10;
+          return `<ellipse cx="${x}" cy="${y}" rx="${8 * scale}" ry="${18 * scale}" fill="${accent}" opacity=".72" transform="rotate(${rotate} ${x} ${y})"/>`;
+        }).join('')}
+      </g>
+      <g transform="translate(512 530)" filter="url(#shadow)">
+        <circle r="292" fill="#050505" opacity=".22"/>
+        <circle r="300" fill="none" stroke="${glow}" stroke-width="8" stroke-dasharray="4 14" opacity=".95"/>
+        <circle r="248" fill="none" stroke="${accent}" stroke-width="5" opacity=".82"/>
+        ${Array.from({ length: 72 }).map((_, barIndex) => {
+          const angle = barIndex * 5;
+          const height = 18 + ((barIndex * 17 + hash) % 72);
+          return `<rect x="-3" y="${-338 - height}" width="6" height="${height}" rx="3" fill="${accent}" opacity=".92" transform="rotate(${angle})"/>`;
+        }).join('')}
+        <path d="M-58 -98 C-32 -146 44 -150 74 -92 C110 -24 56 52 0 92 C-56 52 -110 -24 -74 -92 C-44 -150 32 -146 58 -98Z" fill="${accent}" opacity=".2"/>
+        <text x="0" y="-42" text-anchor="middle" fill="#fff" font-family="Arial Black, Impact, sans-serif" font-size="${titleLineOne.length > 10 ? 86 : 108}" font-style="italic" letter-spacing="2">${titleLineOne}</text>
+        <text x="0" y="80" text-anchor="middle" fill="${accent}" font-family="Arial Black, Impact, sans-serif" font-size="118" font-style="italic" letter-spacing="4">${titleLineTwo}</text>
+        <text x="0" y="164" text-anchor="middle" fill="#fff" font-family="Arial, sans-serif" font-size="42" font-weight="800" letter-spacing="18">MIX</text>
+      </g>
+      <g opacity=".9">
+        <path d="M142 874 H882" stroke="${accent}" stroke-width="2" opacity=".25"/>
+        <circle cx="512" cy="874" r="18" fill="${accent}"/>
+        <path d="M512 845 V903 M483 874 H541" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".86"/>
+      </g>
+      <rect x="8" y="8" width="1008" height="1008" rx="88" fill="none" stroke="#fff" stroke-opacity=".08" stroke-width="8"/>
+    </svg>
+  `;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
 export function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -318,20 +404,20 @@ export function App() {
   const customGenreChannels = useMemo(() => (
     customGenreOptions.map((genre, index) => {
       const genreTracks = tracks.filter((track) => normalizeFolderName(track.genre) === normalizeFolderName(genre));
-      const coverTrack = genreTracks.find((track) => track.cover_url);
       const accent = channels[index % channels.length]?.accent || '#ff8fbd';
+      const id = `custom-${normalizeFolderName(genre).replace(/[^a-z0-9]+/g, '-')}`;
 
       return {
-        id: `custom-${normalizeFolderName(genre).replace(/[^a-z0-9]+/g, '-')}`,
+        id,
         customGenre: genre,
         name: genre,
         mood: `${genreTracks.length} canciones subidas`,
         accent,
-        image: coverTrack?.cover_url || sakuraIcon,
+        image: categoryCovers[id] || createGeneratedCategoryCover(genre, index),
         tracks: genreTracks.map((track) => track.title)
       };
     })
-  ), [customGenreOptions, tracks]);
+  ), [categoryCovers, customGenreOptions, tracks]);
 
   const mixChannels = useMemo(() => {
     const defaultChannels = channels.map((channel) => ({
