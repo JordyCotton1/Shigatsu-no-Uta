@@ -3478,25 +3478,25 @@ body {
 @media (max-width: 760px) {
   .player {
     bottom: 78px !important;
-    grid-template-columns: minmax(0, 1fr) 58px !important;
-    height: 84px !important;
+    grid-template-columns: minmax(0, 1fr) 50px !important;
+    height: 68px !important;
     left: 12px !important;
     right: 12px !important;
-    padding: 10px 12px !important;
+    padding: 8px 10px !important;
   }
 
   .player-track {
     cursor: pointer !important;
     display: grid !important;
-    grid-template-columns: 56px minmax(0, 1fr) 42px !important;
-    gap: 10px !important;
+    grid-template-columns: 46px minmax(0, 1fr) 36px !important;
+    gap: 9px !important;
     min-width: 0 !important;
   }
 
   .player-track img {
-    border-radius: 8px !important;
-    height: 56px !important;
-    width: 56px !important;
+    border-radius: 7px !important;
+    height: 46px !important;
+    width: 46px !important;
   }
 
   .player-track div {
@@ -3505,12 +3505,12 @@ body {
   }
 
   .player-track strong {
-    font-size: 1.06rem !important;
+    font-size: 0.94rem !important;
     line-height: 1.1 !important;
   }
 
   .player-track span {
-    font-size: 0.88rem !important;
+    font-size: 0.78rem !important;
   }
 
   .player-track .player-heart {
@@ -3518,9 +3518,9 @@ body {
     background: transparent !important;
     color: #ff8fbd !important;
     display: grid !important;
-    height: 42px !important;
+    height: 36px !important;
     justify-self: end !important;
-    width: 42px !important;
+    width: 36px !important;
   }
 
   .player-track .player-heart.active {
@@ -3536,9 +3536,7 @@ body {
     display: contents !important;
   }
 
-  .player-controls .plain-player-button,
-  .player-controls .plain-player-button:first-child,
-  .player-controls .plain-player-button:last-child {
+  .player-controls .plain-player-button {
     display: none !important;
   }
 
@@ -3546,8 +3544,8 @@ body {
     background: #ff7db6 !important;
     color: #050505 !important;
     display: grid !important;
-    height: 58px !important;
-    width: 58px !important;
+    height: 50px !important;
+    width: 50px !important;
   }
 
   .player-progress,

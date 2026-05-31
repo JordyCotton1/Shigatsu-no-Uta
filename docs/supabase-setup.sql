@@ -127,14 +127,14 @@ drop policy if exists "tracks_update_own" on public.tracks;
 create policy "tracks_update_own"
 on public.tracks for update
 to authenticated
-using (auth.uid() = user_id or public.is_admin())
-with check (auth.uid() = user_id or public.is_admin());
+using (public.is_admin())
+with check (public.is_admin());
 
 drop policy if exists "tracks_delete_own" on public.tracks;
 create policy "tracks_delete_own"
 on public.tracks for delete
 to authenticated
-using (auth.uid() = user_id or public.is_admin());
+using (public.is_admin());
 
 drop policy if exists "folders_select_access" on public.playlist_folders;
 create policy "folders_select_access"

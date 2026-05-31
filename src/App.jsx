@@ -939,7 +939,7 @@ export function App() {
 
   async function saveTrackDetails(event) {
     event.preventDefault();
-    if (!currentTrack || (!isAdmin && currentTrack.user_id !== user?.id)) return;
+    if (!currentTrack || !isAdmin) return;
 
     const updates = {
       title: trackEditForm.title.trim() || currentTrack.title,
@@ -1624,7 +1624,7 @@ export function App() {
                   <div><dt>Fuente de datos</dt><dd>{currentTrack.metadata_source || 'Manual'}</dd></div>
                   <div><dt>Estado</dt><dd>{isPlaying ? 'Reproduciendo' : 'En pausa/listo'}</dd></div>
                 </dl>
-                {(isAdmin || currentTrack.user_id === user.id) && (
+                {isAdmin && (
                   <form className="track-edit-form" onSubmit={saveTrackDetails}>
                     <label>Titulo<input value={trackEditForm.title} onChange={(event) => setTrackEditForm({ ...trackEditForm, title: event.target.value })} /></label>
                     <label>Artista<input value={trackEditForm.artist} onChange={(event) => setTrackEditForm({ ...trackEditForm, artist: event.target.value })} /></label>
