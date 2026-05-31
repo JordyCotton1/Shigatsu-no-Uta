@@ -301,6 +301,7 @@ export function App() {
         name: artistName,
         genre: channel?.name || track.genre || 'Musica',
         image: track.cover_url || channel?.image || sakuraIcon,
+        track,
         count: 1
       });
     }
@@ -1755,7 +1756,26 @@ export function App() {
                   <div className="section-head"><h2>Artistas recomendados</h2><span>Con canciones subidas</span></div>
                   <div className="artist-row">
                     {featuredArtists.map((artist) => (
-                      <article className="artist-card" key={artist.name}>
+                      <article
+                        className="artist-card"
+                        key={artist.name}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => artist.track && playTrackQueue(
+                          tracks.filter((track) => track.artist?.trim().toLowerCase() === artist.name.toLowerCase()),
+                          0
+                        )}
+                        onKeyDown={(event) => {
+                          if ((event.key === 'Enter' || event.key === ' ') && artist.track) {
+                            event.preventDefault();
+                            playTrackQueue(
+                              tracks.filter((track) => track.artist?.trim().toLowerCase() === artist.name.toLowerCase()),
+                              0
+                            );
+                          }
+                        }}
+                        title={`Reproducir canciones de ${artist.name}`}
+                      >
                         <img src={artist.image} alt={artist.name} />
                         <h3>{artist.name}</h3>
                         <p>{artist.genre}</p>

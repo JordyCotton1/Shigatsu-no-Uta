@@ -2215,6 +2215,15 @@ body {
   background: linear-gradient(180deg, rgba(255, 143, 189, 0.15), rgba(255, 255, 255, 0.04));
 }
 
+.artist-card {
+  cursor: pointer;
+}
+
+.artist-card:focus-visible {
+  outline: 2px solid #ff8fbd;
+  outline-offset: 3px;
+}
+
 .admin-cover-editor {
   display: grid;
   gap: 8px;
