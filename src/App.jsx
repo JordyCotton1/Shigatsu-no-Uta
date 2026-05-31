@@ -41,7 +41,6 @@ import sakuraLetterImage from '../fondos/letra.png';
 import sakuraSidebarImage from '../fondos/sakura-sidebar-bg.png';
 
 const siteUrl = window.location.origin;
-const adminEmail = import.meta.env.VITE_ADMIN_EMAIL?.toLowerCase() || '';
 
 const fallbackAvatar = 'https://api.dicebear.com/8.x/adventurer/svg?seed=Enrique&backgroundColor=1f2937';
 const brandName = 'Shigatsu no Uta';
@@ -203,7 +202,7 @@ export function App() {
   const searchInputRef = useRef(null);
   const audioRef = useRef(null);
   const user = session?.user ?? null;
-  const isAdmin = user?.email?.toLowerCase() === adminEmail;
+  const isAdmin = profile?.role === 'admin';
 
   useEffect(() => {
     let mounted = true;

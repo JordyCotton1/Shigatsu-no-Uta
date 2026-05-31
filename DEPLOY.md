@@ -9,7 +9,6 @@ Configura estas variables en Vercel, Netlify, Render u otro hosting:
 ```env
 VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=tu_publishable_key
-VITE_ADMIN_EMAIL=correo-admin@example.com
 ```
 
 ## Importante
@@ -24,12 +23,24 @@ VITE_ADMIN_EMAIL=correo-admin@example.com
 
 1. Abre tu proyecto en Vercel.
 2. Ve a `Settings` -> `Environment Variables`.
-3. Agrega las tres variables de arriba.
+3. Agrega las variables de arriba.
 4. Ejecuta un nuevo deploy.
 
 ## En Netlify
 
 1. Abre tu sitio en Netlify.
 2. Ve a `Site configuration` -> `Environment variables`.
-3. Agrega las tres variables de arriba.
+3. Agrega las variables de arriba.
 4. Ejecuta un nuevo deploy.
+
+## Configurar Supabase
+
+Ejecuta `docs/supabase-setup.sql` en el SQL Editor de Supabase. Ese archivo no contiene claves secretas; solo crea tablas, policies RLS, bucket de Storage y permisos.
+
+Para convertir un usuario en administrador:
+
+```sql
+update public.profiles
+set role = 'admin'
+where email = 'correo-admin@example.com';
+```
