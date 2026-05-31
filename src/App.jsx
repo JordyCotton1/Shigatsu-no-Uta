@@ -2161,22 +2161,53 @@ export function App() {
               <div className="section-head"><h2>Canciones subidas</h2><span>{visibleTracks.length} canciones</span></div>
               <div className="track-list">
                 {visibleTracks.length === 0 && <p className="empty-state">Todavia no hay canciones subidas.</p>}
-                {visibleTracks.map((track) => (
-                  <article className={`track-row ${currentTrack?.id === track.id ? 'playing' : ''}`} key={track.id}>
+                {visibleTracks.map((track, index) => (
+                  <article
+                    className={`track-row ${currentTrack?.id === track.id ? 'playing' : ''}`}
+                    key={track.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => playTrackQueue(visibleTracks, index)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') playTrackQueue(visibleTracks, index);
+                    }}
+                  >
                     <img src={track.cover_url || activeChannel.image} alt={track.title} />
-                    <button className="row-play" type="button" onClick={() => selectTrack(track)} title="Cargar esta cancion"><Music2 size={16} /></button>
+                    <button
+                      className="row-play"
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        playTrackQueue(visibleTracks, index);
+                      }}
+                      title="Reproducir esta cancion"
+                    >
+                      <Music2 size={16} />
+                    </button>
                     <div><strong>{track.title}</strong><span>{track.artist}{track.album ? ` - ${track.album}` : ''}</span></div>
                     <span>{currentTrack?.id === track.id ? (isPlaying ? 'Reproduciendo' : 'Listo') : track.genre}</span>
                     <button
                       className={`like-icon-button ${likedTrackIds.has(track.id) ? 'liked' : ''}`}
                       type="button"
-                      onClick={() => addTrackToLikes(track)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        addTrackToLikes(track);
+                      }}
                       title="Guardar en Me gusta"
                     >
                       <Heart size={17} fill={likedTrackIds.has(track.id) ? 'currentColor' : 'none'} />
                     </button>
                     {(isAdmin || track.user_id === user.id) && (
-                      <button className="danger-button" type="button" onClick={() => deleteTrack(track)}><Trash2 size={17} /></button>
+                      <button
+                        className="danger-button"
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          deleteTrack(track);
+                        }}
+                      >
+                        <Trash2 size={17} />
+                      </button>
                     )}
                   </article>
                 ))}
@@ -2223,21 +2254,52 @@ export function App() {
               <div className="section-head"><h2>Tu biblioteca</h2><span>{tracks.filter((track) => track.user_id === user.id).length} tuyas</span></div>
               <div className="track-list">
                 {tracks.filter((track) => track.user_id === user.id).length === 0 && <p className="empty-state">No has subido canciones todavia.</p>}
-                {tracks.filter((track) => track.user_id === user.id).map((track) => (
-                  <article className={`track-row ${currentTrack?.id === track.id ? 'playing' : ''}`} key={track.id}>
+                {tracks.filter((track) => track.user_id === user.id).map((track, index, userTracks) => (
+                  <article
+                    className={`track-row ${currentTrack?.id === track.id ? 'playing' : ''}`}
+                    key={track.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => playTrackQueue(userTracks, index)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') playTrackQueue(userTracks, index);
+                    }}
+                  >
                     <img src={track.cover_url || activeChannel.image} alt={track.title} />
-                    <button className="row-play" type="button" onClick={() => selectTrack(track)} title="Cargar esta cancion"><Music2 size={16} /></button>
+                    <button
+                      className="row-play"
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        playTrackQueue(userTracks, index);
+                      }}
+                      title="Reproducir esta cancion"
+                    >
+                      <Music2 size={16} />
+                    </button>
                     <div><strong>{track.title}</strong><span>{track.artist}{track.album ? ` - ${track.album}` : ''}</span></div>
                     <span>{currentTrack?.id === track.id ? (isPlaying ? 'Reproduciendo' : 'Listo') : track.genre}</span>
                     <button
                       className={`like-icon-button ${likedTrackIds.has(track.id) ? 'liked' : ''}`}
                       type="button"
-                      onClick={() => addTrackToLikes(track)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        addTrackToLikes(track);
+                      }}
                       title="Guardar en Me gusta"
                     >
                       <Heart size={17} fill={likedTrackIds.has(track.id) ? 'currentColor' : 'none'} />
                     </button>
-                    <button className="danger-button" type="button" onClick={() => deleteTrack(track)}><Trash2 size={17} /></button>
+                    <button
+                      className="danger-button"
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        deleteTrack(track);
+                      }}
+                    >
+                      <Trash2 size={17} />
+                    </button>
                   </article>
                 ))}
               </div>
