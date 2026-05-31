@@ -1369,6 +1369,57 @@ select:focus { border-color: var(--green); }
   color: #16050e;
 }
 
+.genre-picker-scroll {
+  background: #080808;
+  border: 1px solid rgba(255, 143, 189, 0.6);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 10px;
+  scrollbar-color: #ff7db6 rgba(255, 255, 255, 0.08);
+  scrollbar-width: thin;
+}
+
+.genre-picker-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.genre-picker-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+
+.genre-picker-scroll::-webkit-scrollbar-thumb {
+  background: #ff7db6;
+  border-radius: 999px;
+}
+
+.genre-picker-scroll button {
+  border: 1px solid rgba(255, 143, 189, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  display: grid;
+  gap: 2px;
+  min-height: 52px;
+  padding: 8px 14px;
+  text-align: left;
+}
+
+.genre-picker-scroll button.selected {
+  background: linear-gradient(90deg, rgba(255, 125, 182, 0.75), rgba(255, 125, 182, 0.18));
+  border-color: #ff7db6;
+  color: #11050b;
+  font-weight: 900;
+}
+
+.genre-picker-scroll small {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.76rem;
+}
+
 .folders-view {
   display: grid;
   grid-template-columns: minmax(300px, 390px) minmax(0, 1fr);
@@ -1931,8 +1982,19 @@ select:focus { border-color: var(--green); }
 .progress { height: 9px; border-radius: 999px; background: #555; overflow: hidden; }
 .progress span { display: block; width: 42%; height: 100%; border-radius: inherit; background: var(--accent); }
 .progress.empty span { width: 0; }
-.audio-player {
+.audio-player,
+.youtube-audio-frame {
   display: none;
+}
+
+.youtube-audio-frame {
+  border: 0;
+  display: block;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  width: 1px;
 }
 
 @media (max-width: 920px) {

@@ -161,6 +161,31 @@ function isYoutubeUrl(url = '') {
   return /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//i.test(url.trim());
 }
 
+function getYoutubeVideoId(url = '') {
+  const trimmedUrl = url.trim();
+  const patterns = [
+    /youtu\.be\/([^?&/]+)/i,
+    /youtube\.com\/watch\?.*v=([^?&]+)/i,
+    /youtube\.com\/embed\/([^?&/]+)/i,
+    /youtube\.com\/shorts\/([^?&/]+)/i
+  ];
+  const match = patterns.map((pattern) => trimmedUrl.match(pattern)).find(Boolean);
+  return match?.[1] || '';
+}
+
+function getYoutubeEmbedUrl(url = '', playing = false) {
+  const videoId = getYoutubeVideoId(url);
+  if (!videoId) return '';
+  const params = new URLSearchParams({
+    autoplay: playing ? '1' : '0',
+    controls: '0',
+    modestbranding: '1',
+    rel: '0',
+    playsinline: '1'
+  });
+  return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+}
+
 function hashText(text = '') {
   return [...text].reduce((hash, character) => {
     const nextHash = ((hash << 5) - hash) + character.charCodeAt(0);
@@ -538,6 +563,11 @@ export function App() {
   const currentTrackIsYoutube = Boolean(currentTrack && (isYoutubeUrl(currentTrack.audio_url) || currentTrack.storage_path?.startsWith('youtube:')));
   const canStream = Boolean(currentTrack?.audio_url && !currentTrackIsYoutube);
   const canPlay = Boolean(currentTrack?.audio_url);
+  const youtubeEmbedUrl = currentTrackIsYoutube ? getYoutubeEmbedUrl(currentTrack.audio_url, isPlaying) : '';
+  const uploadGenreChoices = useMemo(() => ([
+    ...channels.map((channel) => ({ value: channel.id, label: channel.name })),
+    ...customGenreOptions.map((genre) => ({ value: genre, label: genre, custom: true }))
+  ]), [customGenreOptions]);
   const likesFolders = useMemo(
     () => folders.filter((folder) => folder.owner_id === user?.id && isLikesFolderName(folder.name)),
     [folders, user?.id]
@@ -1483,12 +1513,6 @@ export function App() {
     setProgress(0);
     setCurrentTime(0);
     recordTrackPlay(track);
-    if (isYoutubeUrl(track.audio_url) || track.storage_path?.startsWith('youtube:')) {
-      setIsPlaying(false);
-      window.open(track.audio_url, '_blank', 'noopener,noreferrer');
-      return;
-    }
-
     setIsPlaying(true);
   }
 
@@ -1511,12 +1535,6 @@ export function App() {
         setActiveView('upload');
         showPlayerMessage('Sube una cancion para reproducir.');
       }
-      return;
-    }
-
-    if (currentTrackIsYoutube) {
-      window.open(currentTrack.audio_url, '_blank', 'noopener,noreferrer');
-      setIsPlaying(false);
       return;
     }
 
@@ -2618,14 +2636,23 @@ export function App() {
                 </label>
                 <label>
                   Genero
-                  <select required value={trackForm.genre} onChange={(event) => setTrackForm({ ...trackForm, genre: event.target.value })}>
-                    {channels.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
-                    {customGenreOptions.length > 0 && (
-                      <optgroup label="Categorias guardadas">
-                        {customGenreOptions.map((genre) => <option key={genre} value={genre}>{genre}</option>)}
-                      </optgroup>
-                    )}
-                  </select>
+                  <div className="genre-picker-scroll">
+                    {uploadGenreChoices.map((choice) => (
+                      <button
+                        className={trackForm.genre === choice.value ? 'selected' : ''}
+                        key={choice.value}
+                        type="button"
+                        onClick={() => setTrackForm({
+                          ...trackForm,
+                          genre: choice.value,
+                          custom_genre: choice.value === 'otros' ? trackForm.custom_genre : ''
+                        })}
+                      >
+                        <span>{choice.label}</span>
+                        {choice.custom && <small>Categoria guardada</small>}
+                      </button>
+                    ))}
+                  </div>
                 </label>
                 {trackForm.genre === 'otros' && (
                   <label>
@@ -2762,6 +2789,14 @@ export function App() {
             onTimeUpdate={updateAudioProgress}
             onLoadedMetadata={updateAudioProgress}
             onEnded={playNextFromQueue}
+          />
+        )}
+        {youtubeEmbedUrl && isPlaying && (
+          <iframe
+            className="youtube-audio-frame"
+            src={youtubeEmbedUrl}
+            title={`YouTube - ${currentTrack.title}`}
+            allow="autoplay; encrypted-media"
           />
         )}
       </footer>
