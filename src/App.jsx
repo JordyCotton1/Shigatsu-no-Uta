@@ -205,6 +205,22 @@ function withApprovalStatus(status, source = '') {
   return `${approvalPrefix}${status}|${source || 'Manual'}`;
 }
 
+function getDateKey(date = new Date()) {
+  return date.toISOString().slice(0, 10);
+}
+
+function getMonthKey(date = new Date()) {
+  return date.toISOString().slice(0, 7);
+}
+
+function formatListenDuration(seconds = 0) {
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  if (hours <= 0) return `${minutes}m`;
+  return `${hours}h ${minutes}m`;
+}
+
 function hashText(text = '') {
   return [...text].reduce((hash, character) => {
     const nextHash = ((hash << 5) - hash) + character.charCodeAt(0);
@@ -331,6 +347,7 @@ export function App() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationsReadAt, setNotificationsReadAt] = useState(() => Number(localStorage.getItem('notificationsReadAt') || 0));
   const [playCounts, setPlayCounts] = useState({});
+  const [listeningStats, setListeningStats] = useState({ totalSeconds: 0, byDate: {}, byMonth: {}, byGenre: {}, byArtist: {}, byTrack: {} });
   const [editingProfile, setEditingProfile] = useState(false);
   const [avatarMode, setAvatarMode] = useState('url');
   const [avatarFile, setAvatarFile] = useState(null);
@@ -389,6 +406,7 @@ export function App() {
       setAvatarMode('url');
       setAvatarFile(null);
       setPlayCounts({});
+      setListeningStats({ totalSeconds: 0, byDate: {}, byMonth: {}, byGenre: {}, byArtist: {}, byTrack: {} });
       return;
     }
 
@@ -401,6 +419,12 @@ export function App() {
       setPlayCounts(JSON.parse(localStorage.getItem(`playCounts:${user.id}`) || '{}'));
     } catch {
       setPlayCounts({});
+    }
+
+    try {
+      setListeningStats(JSON.parse(localStorage.getItem(`listeningStats:${user.id}`) || '{"totalSeconds":0,"byDate":{},"byMonth":{},"byGenre":{},"byArtist":{},"byTrack":{}}'));
+    } catch {
+      setListeningStats({ totalSeconds: 0, byDate: {}, byMonth: {}, byGenre: {}, byArtist: {}, byTrack: {} });
     }
   }, [user?.id]);
 
@@ -583,6 +607,54 @@ export function App() {
       .slice(0, 5)
       .map((item) => item.track);
   }, [folderTracks, folders, playCounts, publicTracks, user?.id]);
+
+  const wellnessStats = useMemo(() => {
+    const todayKey = getDateKey();
+    const monthKey = getMonthKey();
+    const todaySeconds = listeningStats.byDate?.[todayKey] || 0;
+    const monthSeconds = listeningStats.byMonth?.[monthKey] || 0;
+    const weekSeconds = Array.from({ length: 7 }).reduce((total, _, index) => {
+      const date = new Date();
+      date.setDate(date.getDate() - index);
+      return total + (listeningStats.byDate?.[getDateKey(date)] || 0);
+    }, 0);
+    let streak = 0;
+    for (let index = 0; index < 365; index += 1) {
+      const date = new Date();
+      date.setDate(date.getDate() - index);
+      if ((listeningStats.byDate?.[getDateKey(date)] || 0) <= 0) break;
+      streak += 1;
+    }
+    const topFromMap = (map = {}) => Object.entries(map).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Aun sin datos';
+    const topTrackId = topFromMap(listeningStats.byTrack);
+    const topTrack = publicTracks.find((track) => track.id === topTrackId);
+    const favoriteGenre = topFromMap(listeningStats.byGenre);
+    const recommendedVolume = todaySeconds > 7200 ? 60 : 65;
+    const volumeScore = Math.max(0, 100 - Math.max(0, volume - 75) * 3);
+    const restScore = Math.max(45, 100 - Math.max(0, todaySeconds - 7200) / 90);
+    const hearingScore = Math.round((volumeScore + restScore) / 2);
+    const currentHour = new Date().getHours();
+
+    return {
+      todaySeconds,
+      weekSeconds,
+      monthSeconds,
+      totalSeconds: listeningStats.totalSeconds || 0,
+      streak,
+      recommendedVolume,
+      hearingScore,
+      restScore: Math.round(restScore),
+      volumeScore: Math.round(volumeScore),
+      favoriteArtist: topFromMap(listeningStats.byArtist),
+      favoriteGenre,
+      favoriteTrack: topTrack?.title || 'Aun sin datos',
+      songOfDay: recommendedTracks[0] || currentTrack || publicTracks[0],
+      mood: favoriteGenre.toLowerCase().includes('rock') || favoriteGenre.toLowerCase().includes('metal') ? 'Energia alta' : currentHour >= 22 ? 'Relajado' : 'Alegre',
+      lateNight: currentHour >= 22 || currentHour < 5,
+      needsBreak: todaySeconds >= 7200,
+      volumeWarning: volume >= 85
+    };
+  }, [currentTrack, listeningStats, publicTracks, recommendedTracks, volume]);
   const recentNotifications = useMemo(() => (
     [...publicTracks]
       .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
@@ -729,6 +801,44 @@ export function App() {
 
     return () => window.clearInterval(timer);
   }, [currentTrackIsYoutube, duration, isPlaying, currentTrack?.id]);
+
+  useEffect(() => {
+    if (!user?.id || !isPlaying || !currentTrack) return;
+
+    const timer = window.setInterval(() => {
+      const todayKey = getDateKey();
+      const monthKey = getMonthKey();
+      setListeningStats((current) => {
+        const nextStats = {
+          totalSeconds: Number(current.totalSeconds || 0) + 1,
+          byDate: {
+            ...(current.byDate || {}),
+            [todayKey]: Number(current.byDate?.[todayKey] || 0) + 1
+          },
+          byMonth: {
+            ...(current.byMonth || {}),
+            [monthKey]: Number(current.byMonth?.[monthKey] || 0) + 1
+          },
+          byGenre: {
+            ...(current.byGenre || {}),
+            [currentTrack.genre || 'Sin genero']: Number(current.byGenre?.[currentTrack.genre || 'Sin genero'] || 0) + 1
+          },
+          byArtist: {
+            ...(current.byArtist || {}),
+            [currentTrack.artist || 'Sin artista']: Number(current.byArtist?.[currentTrack.artist || 'Sin artista'] || 0) + 1
+          },
+          byTrack: {
+            ...(current.byTrack || {}),
+            [currentTrack.id]: Number(current.byTrack?.[currentTrack.id] || 0) + 1
+          }
+        };
+        localStorage.setItem(`listeningStats:${user.id}`, JSON.stringify(nextStats));
+        return nextStats;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [currentTrack, isPlaying, user?.id]);
 
   useEffect(() => {
     if (!trackInfoOpen) return;
@@ -1938,6 +2048,7 @@ export function App() {
             <Library size={19} /> Tu biblioteca
           </button>
           <button className={activeView === 'upload' ? 'nav-active' : ''} onClick={() => setActiveView('upload')}><Upload size={19} /> Subir cancion</button>
+          <button className={activeView === 'premium' ? 'nav-active' : ''} onClick={() => setActiveView('premium')}><Crown size={19} /> Premium</button>
         </nav>
         <span className="sidebar-section-title">Playlists</span>
         <div className="genre-list">
@@ -2816,6 +2927,76 @@ export function App() {
               </form>
             </section>
           )}
+
+          {activeView === 'premium' && (
+            <section className="wellness-panel">
+              <div className="wellness-hero">
+                <span className="eyebrow"><Crown size={16} /> Tu Bienestar Musical</span>
+                <h2>Sakura Health Score</h2>
+                <p>Cuida tu energia, tu descanso y tus oidos mientras escuchas Shigatsu no Uta.</p>
+                <strong>{wellnessStats.hearingScore}/100</strong>
+              </div>
+
+              <div className="wellness-grid">
+                <article>
+                  <h3>Tiempo escuchado</h3>
+                  <dl>
+                    <div><dt>Hoy</dt><dd>{formatListenDuration(wellnessStats.todaySeconds)}</dd></div>
+                    <div><dt>Esta semana</dt><dd>{formatListenDuration(wellnessStats.weekSeconds)}</dd></div>
+                    <div><dt>Este mes</dt><dd>{formatListenDuration(wellnessStats.monthSeconds)}</dd></div>
+                    <div><dt>Total</dt><dd>{formatListenDuration(wellnessStats.totalSeconds)}</dd></div>
+                  </dl>
+                </article>
+
+                <article>
+                  <h3>Salud auditiva</h3>
+                  <div className="wellness-score-row"><span>Volumen actual</span><strong>{muted ? 0 : volume}%</strong></div>
+                  <div className="wellness-meter"><span style={{ width: `${muted ? 0 : volume}%` }} /></div>
+                  <p>Recomendado: {wellnessStats.recommendedVolume}% - 80%</p>
+                  {wellnessStats.volumeWarning && <p className="wellness-alert">Volumen alto. Baja un poco para no cansar tus oidos.</p>}
+                  {wellnessStats.needsBreak && <p className="wellness-alert">Llevas mas de 2 horas escuchando. Toma un descanso de 10 minutos.</p>}
+                </article>
+
+                <article>
+                  <h3>Cancion del dia</h3>
+                  {wellnessStats.songOfDay ? (
+                    <button className="wellness-track" type="button" onClick={() => playTrackQueue([wellnessStats.songOfDay], 0)}>
+                      <img src={wellnessStats.songOfDay.cover_url || getDisplayChannelByGenre(wellnessStats.songOfDay.genre).image} alt={wellnessStats.songOfDay.title} />
+                      <span><strong>{wellnessStats.songOfDay.title}</strong><small>{wellnessStats.songOfDay.artist}</small></span>
+                    </button>
+                  ) : (
+                    <p>Escucha algunas canciones para descubrir tu recomendacion.</p>
+                  )}
+                </article>
+
+                <article>
+                  <h3>Estadisticas</h3>
+                  <dl>
+                    <div><dt>Artista mas escuchado</dt><dd>{wellnessStats.favoriteArtist}</dd></div>
+                    <div><dt>Genero favorito</dt><dd>{wellnessStats.favoriteGenre}</dd></div>
+                    <div><dt>Cancion favorita</dt><dd>{wellnessStats.favoriteTrack}</dd></div>
+                    <div><dt>Racha musical</dt><dd>{wellnessStats.streak} dias</dd></div>
+                  </dl>
+                </article>
+
+                <article>
+                  <h3>Estado de animo musical</h3>
+                  <p className="wellness-mood">{wellnessStats.lateNight ? '🌙' : '🌸'} {wellnessStats.mood}</p>
+                  <p>{wellnessStats.lateNight ? 'Se recomienda musica relajante para proteger tu descanso.' : 'Tu energia musical esta activa para descubrir nuevos mixes.'}</p>
+                </article>
+
+                <article>
+                  <h3>Logros</h3>
+                  <div className="achievement-list">
+                    <span className={wellnessStats.totalSeconds >= 360000 ? 'earned' : ''}>Primeras 100 horas</span>
+                    <span className={wellnessStats.streak >= 7 ? 'earned' : ''}>7 dias seguidos</span>
+                    <span className={Object.values(playCounts).reduce((total, count) => total + count, 0) >= 1000 ? 'earned' : ''}>1000 canciones</span>
+                    <span className={wellnessStats.hearingScore >= 90 ? 'earned' : ''}>Oidos cuidados</span>
+                  </div>
+                </article>
+              </div>
+            </section>
+          )}
         </section>
       </section>
 
@@ -2911,7 +3092,7 @@ export function App() {
         <button className={activeView === 'search' ? 'active' : ''} type="button" onClick={focusSearchView}><Search size={24} /> Buscar</button>
         <button className={activeView === 'folders' ? 'active' : ''} type="button" onClick={() => setActiveView('folders')}><Library size={24} /> Tu biblioteca</button>
         <button className={activeView === 'upload' ? 'active' : ''} type="button" onClick={() => setActiveView('upload')}><Upload size={24} /> Subir cancion</button>
-        <button type="button"><Crown size={24} /> Premium</button>
+        <button className={activeView === 'premium' ? 'active' : ''} type="button" onClick={() => setActiveView('premium')}><Crown size={24} /> Premium</button>
       </nav>
     </main>
   );
