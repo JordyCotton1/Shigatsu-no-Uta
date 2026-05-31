@@ -109,7 +109,9 @@ const emptyTrackForm = {
   album: '',
   genre: 'anime',
   custom_genre: '',
+  cover_mode: 'url',
   cover_url: '',
+  cover_file: null,
   source_mode: '',
   audio: null,
   youtube_url: '',
@@ -303,6 +305,7 @@ export function App() {
   const user = session?.user ?? null;
   const isAdmin = profile?.role === 'admin';
   const avatarPreviewUrl = useMemo(() => avatarFile ? URL.createObjectURL(avatarFile) : '', [avatarFile]);
+  const trackCoverPreviewUrl = useMemo(() => trackForm.cover_file ? URL.createObjectURL(trackForm.cover_file) : '', [trackForm.cover_file]);
 
   useEffect(() => {
     let mounted = true;
@@ -963,7 +966,7 @@ export function App() {
       ['Artista', trackForm.artist],
       ['Album', trackForm.album],
       ['Genero', trackForm.genre],
-      ['Portada por URL', trackForm.cover_url],
+      ['Portada', trackForm.cover_mode === 'file' ? trackForm.cover_file : trackForm.cover_url],
       ['Tipo de subida', trackForm.source_mode]
     ];
 
@@ -995,6 +998,7 @@ export function App() {
 
     let filePath = '';
     let audioUrl = '';
+    let coverUrl = trackForm.cover_url.trim();
 
     if (trackForm.source_mode === 'file') {
       const extension = trackForm.audio.name.split('.').pop() || 'mp3';
@@ -1030,6 +1034,30 @@ export function App() {
       filePath = `youtube:${crypto.randomUUID()}`;
     }
 
+    if (trackForm.cover_mode === 'file' && trackForm.cover_file) {
+      const extension = trackForm.cover_file.name.split('.').pop() || 'jpg';
+      const coverPath = `${user.id}/covers/${crypto.randomUUID()}.${extension}`;
+      const { error: coverUploadError } = await supabase.storage
+        .from('songs')
+        .upload(coverPath, trackForm.cover_file, {
+          cacheControl: '3600',
+          contentType: trackForm.cover_file.type || 'image/jpeg',
+          upsert: false
+        });
+
+      if (coverUploadError) {
+        setMessage(coverUploadError.message);
+        setUploadingTrack(false);
+        return;
+      }
+
+      const { data: coverPublicUrlData } = supabase.storage
+        .from('songs')
+        .getPublicUrl(coverPath);
+
+      coverUrl = coverPublicUrlData.publicUrl;
+    }
+
     // Registro la cancion en la tabla tracks para que aparezca en biblioteca y busqueda.
     const newTrackPayload = {
       user_id: user.id,
@@ -1037,7 +1065,7 @@ export function App() {
       artist: trackForm.artist.trim(),
       album: trackForm.album.trim(),
       genre: trackForm.genre === 'otros' ? trackForm.custom_genre.trim() : trackForm.genre,
-      cover_url: trackForm.cover_url.trim(),
+      cover_url: coverUrl,
       audio_url: audioUrl,
       storage_path: filePath,
       metadata_source: trackForm.source_mode === 'youtube' ? 'YouTube' : (trackForm.metadata_source || null)
@@ -1725,7 +1753,9 @@ export function App() {
       album: metadata.album || current.album,
       genre: metadata.genre || current.genre,
       custom_genre: metadata.custom_genre || '',
+      cover_mode: metadata.cover_url ? 'url' : current.cover_mode,
       cover_url: metadata.cover_url || current.cover_url,
+      cover_file: metadata.cover_url ? null : current.cover_file,
       metadata_source: metadata.metadata_source || current.metadata_source
     }));
   }
@@ -2603,12 +2633,36 @@ export function App() {
                     <input required value={trackForm.custom_genre} onChange={(event) => setTrackForm({ ...trackForm, custom_genre: event.target.value })} placeholder="Reggaeton, jazz, trap, salsa..." />
                   </label>
                 )}
-                <label>
-                  Portada por URL
-                  <input required type="url" value={trackForm.cover_url} onChange={(event) => setTrackForm({ ...trackForm, cover_url: event.target.value })} placeholder="https://imagen.jpg" />
-                </label>
-                {trackForm.cover_url && (
-                  <img className="cover-preview" src={trackForm.cover_url} alt="Portada seleccionada" />
+                <div className="upload-source-choice cover-source-choice">
+                  <button
+                    className={trackForm.cover_mode === 'url' ? 'active' : ''}
+                    type="button"
+                    onClick={() => setTrackForm({ ...trackForm, cover_mode: 'url', cover_file: null })}
+                  >
+                    URL portada
+                  </button>
+                  <button
+                    className={trackForm.cover_mode === 'file' ? 'active' : ''}
+                    type="button"
+                    onClick={() => setTrackForm({ ...trackForm, cover_mode: 'file', cover_url: '' })}
+                  >
+                    Subir imagen
+                  </button>
+                </div>
+                {trackForm.cover_mode === 'url' ? (
+                  <label>
+                    Portada por URL
+                    <input required type="url" value={trackForm.cover_url} onChange={(event) => setTrackForm({ ...trackForm, cover_url: event.target.value })} placeholder="https://imagen.jpg" />
+                  </label>
+                ) : (
+                  <label className="file-picker">
+                    Imagen de portada
+                    <input required type="file" accept="image/*" onChange={(event) => setTrackForm({ ...trackForm, cover_file: event.target.files?.[0] ?? null })} />
+                    <span>{trackForm.cover_file?.name || 'Selecciona jpg, png, webp...'}</span>
+                  </label>
+                )}
+                {(trackForm.cover_url || trackCoverPreviewUrl) && (
+                  <img className="cover-preview" src={trackCoverPreviewUrl || trackForm.cover_url} alt="Portada seleccionada" />
                 )}
                 {trackForm.source_mode === 'file' ? (
                   <label className="file-picker">
