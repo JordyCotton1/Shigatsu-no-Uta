@@ -39,8 +39,10 @@ import sakuraHeroImage from '../fondos/fondo.png';
 import sakuraIcon from '../fondos/icono.png';
 import sakuraLetterImage from '../fondos/letra.png';
 import sakuraSidebarImage from '../fondos/sakura-sidebar-bg.png';
+import googleLogo from '../fondos/Logo_google.jpg';
 
 const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
+const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'saradateamo2002@gmail.com';
 
 const fallbackAvatar = 'https://api.dicebear.com/8.x/adventurer/svg?seed=Enrique&backgroundColor=1f2937';
 const brandName = 'Shigatsu no Uta';
@@ -152,6 +154,24 @@ function isLikesFolderName(name = '') {
   return ['me gusta', 'tus me gusta'].includes(normalizeFolderName(name));
 }
 
+function openAdminReviewEmail(track) {
+  const subject = encodeURIComponent(`Revisar cancion: ${track.title}`);
+  const body = encodeURIComponent([
+    'Nueva cancion subida para revisar:',
+    '',
+    `Titulo: ${track.title}`,
+    `Artista: ${track.artist}`,
+    `Album: ${track.album}`,
+    `Genero: ${track.genre}`,
+    `Portada: ${track.cover_url}`,
+    `Audio: ${track.audio_url}`,
+    '',
+    'Admin: revisa si esta cancion es apta para quedar publicada.'
+  ].join('\n'));
+
+  window.open(`mailto:${adminEmail}?subject=${subject}&body=${body}`, '_blank', 'noopener,noreferrer');
+}
+
 export function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -160,6 +180,7 @@ export function App() {
   const [authMode, setAuthMode] = useState('login');
   const [activeChannel, setActiveChannel] = useState(channels[0]);
   const [openedCatalog, setOpenedCatalog] = useState(null);
+  const [showAllMixes, setShowAllMixes] = useState(false);
   const [activeView, setActiveView] = useState('home');
   const [query, setQuery] = useState('');
   const [tracks, setTracks] = useState([]);
@@ -261,19 +282,6 @@ export function App() {
     return () => document.removeEventListener('pointerdown', closeMenu);
   }, []);
 
-  const visibleChannels = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    const displayChannels = channels.map((channel) => ({
-      ...channel,
-      image: categoryCovers[channel.id] || channel.image
-    }));
-
-    if (!normalized) return displayChannels;
-    return displayChannels.filter((channel) =>
-      [channel.name, channel.mood, ...channel.tracks].join(' ').toLowerCase().includes(normalized)
-    );
-  }, [query, categoryCovers]);
-
   const visibleTracks = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return tracks;
@@ -300,6 +308,41 @@ export function App() {
       })
       .sort((a, b) => a.localeCompare(b));
   }, [tracks]);
+
+  const customGenreChannels = useMemo(() => (
+    customGenreOptions.map((genre, index) => {
+      const genreTracks = tracks.filter((track) => normalizeFolderName(track.genre) === normalizeFolderName(genre));
+      const coverTrack = genreTracks.find((track) => track.cover_url);
+      const accent = channels[index % channels.length]?.accent || '#ff8fbd';
+
+      return {
+        id: `custom-${normalizeFolderName(genre).replace(/[^a-z0-9]+/g, '-')}`,
+        customGenre: genre,
+        name: genre,
+        mood: `${genreTracks.length} canciones subidas`,
+        accent,
+        image: coverTrack?.cover_url || sakuraIcon,
+        tracks: genreTracks.map((track) => track.title)
+      };
+    })
+  ), [customGenreOptions, tracks]);
+
+  const mixChannels = useMemo(() => {
+    const defaultChannels = channels.map((channel) => ({
+      ...channel,
+      image: categoryCovers[channel.id] || channel.image
+    }));
+
+    return showAllMixes ? [...defaultChannels, ...customGenreChannels] : defaultChannels;
+  }, [categoryCovers, customGenreChannels, showAllMixes]);
+
+  const visibleChannels = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return mixChannels;
+    return mixChannels.filter((channel) =>
+      [channel.name, channel.mood, ...channel.tracks].join(' ').toLowerCase().includes(normalized)
+    );
+  }, [query, mixChannels]);
 
   const featuredArtists = useMemo(() => {
     const artists = new Map();
@@ -399,12 +442,23 @@ export function App() {
   }, [activeFolder, folderTracks, likesFolders]);
   const openedCatalogTracks = useMemo(() => {
     if (!openedCatalog) return [];
-    return tracks.filter((track) => getChannelByGenre(track.genre)?.id === openedCatalog.id);
+    return tracks.filter((track) => trackMatchesChannel(track, openedCatalog));
   }, [openedCatalog, tracks]);
 
   function getDisplayChannelByGenre(genre) {
+    const customChannel = customGenreChannels.find((channel) => normalizeFolderName(channel.customGenre) === normalizeFolderName(genre));
+    if (customChannel) return customChannel;
     const channel = getChannelByGenre(genre);
     return { ...channel, image: categoryCovers[channel.id] || channel.image };
+  }
+
+  function trackMatchesChannel(track, channel) {
+    if (!track || !channel) return false;
+    if (channel.customGenre) {
+      return normalizeFolderName(track.genre) === normalizeFolderName(channel.customGenre);
+    }
+
+    return getChannelByGenre(track.genre)?.id === channel.id;
   }
 
   async function loadCategoryCovers() {
@@ -795,19 +849,21 @@ export function App() {
       .getPublicUrl(filePath);
 
     // Registro la cancion en la tabla tracks para que aparezca en biblioteca y busqueda.
+    const newTrackPayload = {
+      user_id: user.id,
+      title: trackForm.title.trim(),
+      artist: trackForm.artist.trim(),
+      album: trackForm.album.trim(),
+      genre: trackForm.genre === 'otros' ? trackForm.custom_genre.trim() : trackForm.genre,
+      cover_url: trackForm.cover_url.trim(),
+      audio_url: publicUrlData.publicUrl,
+      storage_path: filePath,
+      metadata_source: trackForm.metadata_source || null
+    };
+
     const { error: insertError } = await supabase
       .from('tracks')
-      .insert({
-        user_id: user.id,
-        title: trackForm.title.trim(),
-        artist: trackForm.artist.trim(),
-        album: trackForm.album.trim(),
-        genre: trackForm.genre === 'otros' ? trackForm.custom_genre.trim() : trackForm.genre,
-        cover_url: trackForm.cover_url.trim(),
-        audio_url: publicUrlData.publicUrl,
-        storage_path: filePath,
-        metadata_source: trackForm.metadata_source || null
-      });
+      .insert(newTrackPayload);
 
     if (insertError) {
       if (insertError.message?.includes("public.tracks")) {
@@ -823,7 +879,8 @@ export function App() {
 
     setTrackForm(emptyTrackForm);
     setMetadataResults([]);
-    setMessage('Cancion subida correctamente.');
+    if (!isAdmin) openAdminReviewEmail(newTrackPayload);
+    setMessage(isAdmin ? 'Cancion subida correctamente.' : 'Cancion subida correctamente. Se abrio un correo con la informacion para el admin.');
     setUploadingTrack(false);
     setActiveView('library');
     loadTracks();
@@ -1415,7 +1472,7 @@ export function App() {
 
         <section className="auth-card">
           <button className="google-button" type="button" onClick={signInWithGoogle}>
-            <span>G</span>
+            <img className="google-logo" src={googleLogo} alt="" />
             Continuar con Google
           </button>
           <div className="divider"><span>o</span></div>
@@ -1664,13 +1721,22 @@ export function App() {
             <>
               <div className="section-head">
                 <h2><span className="section-flower">✿</span> Tus mixes mas escuchados</h2>
-                <button className="show-all-button" type="button" onClick={() => setOpenedCatalog(null)}>Mostrar todo</button>
+                <button
+                  className="show-all-button"
+                  type="button"
+                  onClick={() => {
+                    setShowAllMixes((current) => !current);
+                    setOpenedCatalog(null);
+                  }}
+                >
+                  {showAllMixes ? 'Ver principales' : 'Mostrar todo'}
+                </button>
               </div>
               <div className="playlist-grid">
                 {visibleChannels.map((channel) => (
                   (() => {
-                    const channelTracks = tracks.filter((track) => getChannelByGenre(track.genre)?.id === channel.id);
-                    const isChannelCurrent = currentTrack && getChannelByGenre(currentTrack.genre)?.id === channel.id;
+                    const channelTracks = tracks.filter((track) => trackMatchesChannel(track, channel));
+                    const isChannelCurrent = currentTrack && trackMatchesChannel(currentTrack, channel);
                     return (
                       <article
                         className={`playlist-card spotify-mix ${openedCatalog?.id === channel.id ? 'selected' : ''} ${isChannelCurrent ? 'playing' : ''}`}

@@ -3094,3 +3094,383 @@ body {
       linear-gradient(180deg, rgba(255, 143, 189, 0.035), rgba(21, 16, 25, 0.74) 100%) !important;
   }
 }
+
+.google-logo {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: contain;
+}
+
+.gmail-menu,
+.track-info-modal {
+  scrollbar-color: #ff8fbd rgba(255, 255, 255, 0.06) !important;
+}
+
+.gmail-menu::-webkit-scrollbar,
+.track-info-modal::-webkit-scrollbar {
+  width: 9px !important;
+}
+
+.gmail-menu::-webkit-scrollbar-thumb,
+.track-info-modal::-webkit-scrollbar-thumb {
+  background: #ff8fbd !important;
+  border-radius: 999px !important;
+}
+
+@media (min-width: 1101px) {
+  .app-shell {
+    grid-template-columns: 280px minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) 96px !important;
+  }
+
+  .sidebar {
+    background-size: 124% auto !important;
+    gap: 16px !important;
+    padding: 12px 16px 28px !important;
+  }
+
+  .sidebar .sakura-brand {
+    margin-bottom: 12px !important;
+  }
+
+  .sidebar .sakura-brand img {
+    width: 220px !important;
+  }
+
+  .sidebar button,
+  .genre-list button {
+    font-size: 0.94rem !important;
+    min-height: 48px !important;
+    padding: 0 14px !important;
+  }
+
+  .topbar {
+    height: 76px !important;
+    padding: 14px 28px !important;
+  }
+
+  .icon-button {
+    width: 46px !important;
+    height: 46px !important;
+  }
+
+  .profile-button {
+    min-height: 48px !important;
+  }
+
+  .profile-button img {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  .search-box input {
+    min-height: 44px !important;
+    font-size: 0.9rem !important;
+  }
+
+  .search-box svg {
+    top: 13px !important;
+  }
+
+  .hero {
+    height: clamp(300px, 25vw, 390px) !important;
+    min-height: 300px !important;
+    margin: 14px 28px 0 !important;
+    padding: 0 48px 34px !important;
+  }
+
+  .hero-letter {
+    width: min(48%, 650px) !important;
+  }
+
+  .content-grid {
+    gap: 18px !important;
+    padding: 22px 28px 32px !important;
+  }
+
+  .section-head h2 {
+    font-size: 1.45rem !important;
+  }
+
+  .playlist-grid {
+    gap: 14px !important;
+    grid-template-columns: repeat(6, minmax(128px, 1fr)) !important;
+  }
+
+  .playlist-card,
+  .artist-card {
+    padding: 10px !important;
+  }
+
+  .spotify-mix .mix-label {
+    bottom: 10px !important;
+    font-size: 0.86rem !important;
+  }
+
+  .mini-play {
+    bottom: 10px !important;
+    height: 48px !important;
+    right: 10px !important;
+    width: 48px !important;
+  }
+
+  .playlist-card h3,
+  .artist-card h3 {
+    font-size: 0.98rem !important;
+    margin: 12px 0 5px !important;
+  }
+
+  .playlist-card p,
+  .artist-card p {
+    font-size: 0.86rem !important;
+  }
+
+  .artist-card img {
+    width: 82% !important;
+    justify-self: center !important;
+  }
+
+  .folders-view {
+    gap: 16px !important;
+    grid-template-columns: minmax(260px, 340px) minmax(0, 1fr) !important;
+    min-height: 560px !important;
+  }
+
+  .spotify-library,
+  .spotify-playlist {
+    border-radius: 8px !important;
+  }
+
+  .spotify-library {
+    gap: 14px !important;
+    padding: 18px !important;
+  }
+
+  .spotify-library header strong {
+    font-size: 1.08rem !important;
+  }
+
+  .library-tabs span,
+  .playlist-chips span {
+    font-size: 0.9rem !important;
+    padding: 8px 14px !important;
+  }
+
+  .library-list button {
+    grid-template-columns: 58px minmax(0, 1fr) !important;
+    min-height: 68px !important;
+  }
+
+  .library-list .liked-cover,
+  .library-list .folder-cover {
+    height: 56px !important;
+    width: 56px !important;
+  }
+
+  .playlist-hero {
+    gap: 22px !important;
+    grid-template-columns: 170px minmax(0, 1fr) !important;
+    min-height: 210px !important;
+    padding: 28px 32px 24px !important;
+  }
+
+  .liked-cover.big,
+  .folder-cover.big {
+    width: 170px !important;
+  }
+
+  .playlist-hero h2 {
+    font-size: clamp(2.4rem, 5vw, 5.2rem) !important;
+    line-height: 0.98 !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+  }
+
+  .playlist-tools {
+    padding: 18px 32px 14px !important;
+  }
+
+  .playlist-tools .playlist-play {
+    height: 58px !important;
+    width: 58px !important;
+  }
+
+  .playlist-tools button {
+    height: 46px !important;
+    width: 46px !important;
+  }
+
+  .playlist-chips,
+  .playlist-table {
+    padding-left: 32px !important;
+    padding-right: 32px !important;
+  }
+
+  .player {
+    height: 96px !important;
+    grid-template-columns: minmax(260px, 390px) minmax(440px, 1fr) minmax(240px, 340px) !important;
+    padding: 12px 24px !important;
+  }
+
+  .player-track {
+    grid-template-columns: 62px minmax(0, 1fr) 42px !important;
+  }
+
+  .player-track img {
+    height: 62px !important;
+    width: 62px !important;
+  }
+
+  .player .player-toggle {
+    height: 52px !important;
+    width: 52px !important;
+  }
+
+  .gmail-menu {
+    max-height: min(650px, calc(100vh - 72px)) !important;
+    width: min(370px, calc(100vw - 24px)) !important;
+  }
+
+  .gmail-card {
+    padding: 20px 14px !important;
+  }
+
+  .gmail-card img {
+    height: 64px !important;
+    width: 64px !important;
+  }
+
+  .gmail-actions button {
+    min-height: 34px !important;
+    padding-inline: 16px !important;
+  }
+
+  .profile-avatar-preview {
+    height: 78px !important;
+    width: 78px !important;
+  }
+
+  .profile-editor input,
+  .profile-editor .primary,
+  .track-edit-form input,
+  .track-edit-form select {
+    min-height: 44px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .gmail-menu {
+    left: auto !important;
+    max-height: calc(100vh - 18px) !important;
+    right: 8px !important;
+    top: 54px !important;
+    width: calc(100vw - 16px) !important;
+  }
+
+  .gmail-card {
+    margin: 0 4px 12px !important;
+    padding: 18px 12px !important;
+  }
+
+  .profile-editor {
+    padding-inline: 4px !important;
+  }
+
+  .profile-avatar-preview {
+    height: 82px !important;
+    width: 82px !important;
+  }
+
+  .track-info-modal {
+    grid-template-columns: 1fr !important;
+    max-height: calc(100vh - 24px) !important;
+    padding: 14px !important;
+  }
+
+  .track-info-modal > img {
+    height: min(54vw, 190px) !important;
+    width: min(54vw, 190px) !important;
+  }
+
+  .folders-view {
+    min-height: 0 !important;
+  }
+
+  .spotify-library {
+    padding: 16px !important;
+  }
+
+  .spotify-playlist {
+    overflow: hidden !important;
+  }
+
+  .playlist-hero {
+    align-items: center !important;
+    gap: 18px !important;
+    grid-template-columns: 1fr !important;
+    min-height: auto !important;
+    padding: 22px 18px !important;
+    text-align: left !important;
+  }
+
+  .liked-cover.big,
+  .folder-cover.big {
+    justify-self: center !important;
+    width: min(62vw, 220px) !important;
+  }
+
+  .playlist-hero h2 {
+    font-size: clamp(2rem, 12vw, 3.4rem) !important;
+    line-height: 1 !important;
+    margin: 8px 0 10px !important;
+    max-width: 100% !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+  }
+
+  .playlist-hero p {
+    font-size: 0.9rem !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .playlist-tools {
+    gap: 12px !important;
+    padding: 16px 18px 12px !important;
+  }
+
+  .playlist-tools .playlist-play {
+    height: 60px !important;
+    width: 60px !important;
+  }
+
+  .playlist-tools button {
+    height: 46px !important;
+    width: 46px !important;
+  }
+
+  .playlist-chips {
+    padding: 0 18px 16px !important;
+  }
+
+  .playlist-table {
+    padding: 0 10px 28px !important;
+  }
+
+  .playlist-track {
+    gap: 8px !important;
+    grid-template-columns: 28px 48px minmax(0, 1fr) 40px !important;
+    min-width: 0 !important;
+  }
+
+  .library-list button {
+    grid-template-columns: 58px minmax(0, 1fr) !important;
+    min-height: 72px !important;
+  }
+
+  .library-list .liked-cover,
+  .library-list .folder-cover {
+    height: 58px !important;
+    width: 58px !important;
+  }
+}
