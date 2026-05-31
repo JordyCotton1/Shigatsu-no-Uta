@@ -651,7 +651,7 @@ select:focus { border-color: var(--green); }
 
 .track-info-modal {
   position: relative;
-  width: min(860px, 100%);
+  width: min(980px, 100%);
   max-height: calc(100vh - 40px);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -681,8 +681,8 @@ select:focus { border-color: var(--green); }
 }
 
 .track-info-modal > img {
-  width: 220px;
-  height: 220px;
+  width: 280px;
+  height: 280px;
   border-radius: 8px;
   object-fit: cover;
 }
@@ -724,7 +724,66 @@ select:focus { border-color: var(--green); }
 }
 
 .track-info-now-playing {
-  display: none;
+  display: grid;
+  gap: 10px;
+  margin: 2px 0 12px;
+}
+
+.track-info-now-playing h3 {
+  font-size: clamp(2rem, 4vw, 3.3rem);
+  line-height: 0.98;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.track-info-now-playing p {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 1.25rem;
+  margin: 0 0 6px;
+  overflow-wrap: anywhere;
+}
+
+.track-info-now-playing .progress {
+  display: block;
+  height: 5px;
+  width: 100%;
+}
+
+.track-info-times {
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  font-weight: 800;
+  justify-content: space-between;
+}
+
+.track-info-controls {
+  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  justify-items: center;
+  margin: 10px 0 6px;
+}
+
+.track-info-controls button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  display: grid;
+  height: 48px;
+  place-items: center;
+  width: 48px;
+}
+
+.track-info-controls button.liked {
+  color: #ff8fbd;
+}
+
+.track-info-controls .track-info-play {
+  background: #fff;
+  color: #050505;
+  height: 68px;
+  width: 68px;
 }
 
 .track-edit-form {
@@ -801,7 +860,7 @@ select:focus { border-color: var(--green); }
 }
 
 .modal-folder-form {
-  display: grid;
+  display: none;
   gap: 8px;
 }
 
