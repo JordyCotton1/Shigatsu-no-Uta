@@ -714,8 +714,23 @@ export function App() {
       return;
     }
 
-    if (!user || !trackForm.audio) {
-      setMessage('Selecciona un archivo de audio.');
+    const requiredFields = [
+      ['Titulo', trackForm.title],
+      ['Artista', trackForm.artist],
+      ['Album', trackForm.album],
+      ['Genero', trackForm.genre],
+      ['Portada por URL', trackForm.cover_url],
+      ['Archivo de audio', trackForm.audio]
+    ];
+
+    if (trackForm.genre === 'otros') {
+      requiredFields.push(['Genero personalizado', trackForm.custom_genre]);
+    }
+
+    const missingField = requiredFields.find(([, value]) => !value || (typeof value === 'string' && !value.trim()));
+
+    if (!user || missingField) {
+      setMessage(`Completa todos los campos antes de subir. Falta: ${missingField?.[0] || 'usuario'}.`);
       return;
     }
 
@@ -754,11 +769,11 @@ export function App() {
       .from('tracks')
       .insert({
         user_id: user.id,
-        title: trackForm.title || trackForm.audio.name.replace(/\.[^/.]+$/, ''),
-        artist: trackForm.artist || getDisplayName(user, profile),
-        album: trackForm.album || null,
-        genre: trackForm.genre === 'otros' ? (trackForm.custom_genre || 'otros') : trackForm.genre,
-        cover_url: trackForm.cover_url || getChannelByGenre(trackForm.genre)?.image,
+        title: trackForm.title.trim(),
+        artist: trackForm.artist.trim(),
+        album: trackForm.album.trim(),
+        genre: trackForm.genre === 'otros' ? trackForm.custom_genre.trim() : trackForm.genre,
+        cover_url: trackForm.cover_url.trim(),
         audio_url: publicUrlData.publicUrl,
         storage_path: filePath,
         metadata_source: trackForm.metadata_source || null
@@ -1960,11 +1975,11 @@ export function App() {
               <form onSubmit={uploadTrack}>
                 <label>
                   Titulo
-                  <input value={trackForm.title} onChange={(event) => setTrackForm({ ...trackForm, title: event.target.value })} placeholder="Nombre de la cancion" />
+                  <input required value={trackForm.title} onChange={(event) => setTrackForm({ ...trackForm, title: event.target.value })} placeholder="Nombre de la cancion" />
                 </label>
                 <label>
                   Artista
-                  <input value={trackForm.artist} onChange={(event) => setTrackForm({ ...trackForm, artist: event.target.value })} placeholder="Artista o banda" />
+                  <input required value={trackForm.artist} onChange={(event) => setTrackForm({ ...trackForm, artist: event.target.value })} placeholder="Artista o banda" />
                 </label>
                 <button className="lookup-button" type="button" onClick={searchTrackMetadata} disabled={searchingMetadata}>
                   <Search size={18} />
@@ -1982,30 +1997,30 @@ export function App() {
                 )}
                 <label>
                   Album
-                  <input value={trackForm.album} onChange={(event) => setTrackForm({ ...trackForm, album: event.target.value })} placeholder="Album o single" />
+                  <input required value={trackForm.album} onChange={(event) => setTrackForm({ ...trackForm, album: event.target.value })} placeholder="Album o single" />
                 </label>
                 <label>
                   Genero
-                  <select value={trackForm.genre} onChange={(event) => setTrackForm({ ...trackForm, genre: event.target.value })}>
+                  <select required value={trackForm.genre} onChange={(event) => setTrackForm({ ...trackForm, genre: event.target.value })}>
                     {channels.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
                   </select>
                 </label>
                 {trackForm.genre === 'otros' && (
                   <label>
                     Genero personalizado
-                    <input value={trackForm.custom_genre} onChange={(event) => setTrackForm({ ...trackForm, custom_genre: event.target.value })} placeholder="Reggaeton, jazz, trap, salsa..." />
+                    <input required value={trackForm.custom_genre} onChange={(event) => setTrackForm({ ...trackForm, custom_genre: event.target.value })} placeholder="Reggaeton, jazz, trap, salsa..." />
                   </label>
                 )}
                 <label>
                   Portada por URL
-                  <input value={trackForm.cover_url} onChange={(event) => setTrackForm({ ...trackForm, cover_url: event.target.value })} placeholder="https://imagen.jpg" />
+                  <input required type="url" value={trackForm.cover_url} onChange={(event) => setTrackForm({ ...trackForm, cover_url: event.target.value })} placeholder="https://imagen.jpg" />
                 </label>
                 {trackForm.cover_url && (
                   <img className="cover-preview" src={trackForm.cover_url} alt="Portada seleccionada" />
                 )}
                 <label className="file-picker">
                   Archivo de audio
-                  <input type="file" accept="audio/*,.mp3,.mpeg,.mpga,.wav,.ogg,.webm" onChange={(event) => handleAudioFile(event.target.files?.[0] ?? null)} />
+                  <input required type="file" accept="audio/*,.mp3,.mpeg,.mpga,.wav,.ogg,.webm" onChange={(event) => handleAudioFile(event.target.files?.[0] ?? null)} />
                   <span>{trackForm.audio?.name || 'Selecciona mp3, mpeg, wav, ogg...'}</span>
                 </label>
                 <button className="primary" type="submit" disabled={uploadingTrack}>
