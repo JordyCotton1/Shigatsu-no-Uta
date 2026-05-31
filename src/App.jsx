@@ -283,6 +283,24 @@ export function App() {
     );
   }, [query, tracks]);
 
+  const customGenreOptions = useMemo(() => {
+    const channelIds = new Set(channels.map((channel) => channel.id));
+    const channelNames = new Set(channels.map((channel) => channel.name.toLowerCase()));
+    const seen = new Set();
+
+    return tracks
+      .map((track) => track.genre?.trim())
+      .filter(Boolean)
+      .filter((genre) => !channelIds.has(genre) && !channelNames.has(genre.toLowerCase()))
+      .filter((genre) => {
+        const key = genre.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => a.localeCompare(b));
+  }, [tracks]);
+
   const featuredArtists = useMemo(() => {
     const artists = new Map();
 
@@ -1563,6 +1581,11 @@ export function App() {
                       Categoria
                       <select value={trackEditForm.genre} onChange={(event) => setTrackEditForm({ ...trackEditForm, genre: event.target.value })}>
                         {channels.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
+                        {customGenreOptions.length > 0 && (
+                          <optgroup label="Categorias guardadas">
+                            {customGenreOptions.map((genre) => <option key={genre} value={genre}>{genre}</option>)}
+                          </optgroup>
+                        )}
                       </select>
                     </label>
                     {trackEditForm.genre === 'otros' && (
@@ -2035,6 +2058,11 @@ export function App() {
                   Genero
                   <select required value={trackForm.genre} onChange={(event) => setTrackForm({ ...trackForm, genre: event.target.value })}>
                     {channels.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
+                    {customGenreOptions.length > 0 && (
+                      <optgroup label="Categorias guardadas">
+                        {customGenreOptions.map((genre) => <option key={genre} value={genre}>{genre}</option>)}
+                      </optgroup>
+                    )}
                   </select>
                 </label>
                 {trackForm.genre === 'otros' && (
