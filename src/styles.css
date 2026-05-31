@@ -723,6 +723,10 @@ select:focus { border-color: var(--green); }
   text-decoration: none;
 }
 
+.track-info-now-playing {
+  display: none;
+}
+
 .track-edit-form {
   display: grid;
   gap: 10px;
@@ -766,7 +770,7 @@ select:focus { border-color: var(--green); }
 
 .folder-picker {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 48px;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
 }
 
@@ -783,10 +787,17 @@ select:focus { border-color: var(--green); }
 }
 
 .folder-add-button {
-  width: 48px;
+  min-width: 48px;
   height: 48px;
   background: var(--green);
   color: #05240f;
+  border-radius: 999px;
+  font-weight: 900;
+  padding: 0 14px;
+}
+
+.modal-new-folder input {
+  min-height: 48px;
 }
 
 .modal-folder-form {
@@ -3476,6 +3487,147 @@ body {
 }
 
 @media (max-width: 760px) {
+  .modal-backdrop {
+    align-items: start !important;
+    padding: 5px !important;
+  }
+
+  .track-info-modal {
+    border-radius: 10px !important;
+    display: grid !important;
+    gap: 18px !important;
+    grid-template-columns: 1fr !important;
+    height: calc(100dvh - 10px) !important;
+    max-height: calc(100dvh - 10px) !important;
+    overflow-y: auto !important;
+    padding: 18px 16px 38px !important;
+    scrollbar-color: #ff8fbd rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .track-info-modal::-webkit-scrollbar {
+    width: 8px !important;
+  }
+
+  .track-info-modal::-webkit-scrollbar-thumb {
+    background: #ff8fbd !important;
+    border-radius: 999px !important;
+  }
+
+  .track-info-modal > img {
+    aspect-ratio: 1 !important;
+    border-radius: 16px !important;
+    height: auto !important;
+    justify-self: center !important;
+    margin-top: 34px !important;
+    max-height: none !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    width: min(82vw, 360px) !important;
+  }
+
+  .track-info-modal > div {
+    display: grid !important;
+    gap: 18px !important;
+  }
+
+  .track-info-now-playing {
+    display: grid !important;
+    gap: 10px !important;
+  }
+
+  .track-info-now-playing h3 {
+    font-size: clamp(2rem, 10vw, 3.1rem) !important;
+    line-height: 1 !important;
+    margin: 8px 0 0 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .track-info-now-playing p {
+    color: rgba(255, 255, 255, 0.72) !important;
+    font-size: 1.45rem !important;
+    margin: 0 0 8px !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .track-info-now-playing .progress {
+    display: block !important;
+    height: 5px !important;
+    width: 100% !important;
+  }
+
+  .track-info-times {
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    font-weight: 800;
+    justify-content: space-between;
+  }
+
+  .track-info-controls {
+    align-items: center;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    justify-items: center;
+    margin: 12px 0 10px;
+  }
+
+  .track-info-controls button {
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: #fff;
+    display: grid;
+    height: 52px;
+    place-items: center;
+    width: 52px;
+  }
+
+  .track-info-controls button.liked {
+    color: #ff8fbd;
+  }
+
+  .track-info-controls .track-info-play {
+    background: #fff;
+    color: #050505;
+    height: 76px;
+    width: 76px;
+  }
+
+  .track-info-modal > div > .eyebrow {
+    border-top: 1px solid rgba(255, 255, 255, 0.16);
+    margin-top: 12px;
+    padding-top: 22px;
+  }
+
+  .track-info-modal > div > h2 {
+    display: none !important;
+  }
+
+  .track-info-modal dl {
+    margin-bottom: 4px !important;
+  }
+
+  .track-actions {
+    gap: 14px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .like-button {
+    width: 100% !important;
+  }
+
+  .folder-picker {
+    grid-template-columns: 1fr !important;
+  }
+
+  .folder-add-button {
+    min-height: 48px !important;
+    width: 100% !important;
+  }
+
+  .modal-new-folder input {
+    min-height: 48px !important;
+  }
+
   .player {
     bottom: 78px !important;
     grid-template-columns: minmax(0, 1fr) 44px !important;

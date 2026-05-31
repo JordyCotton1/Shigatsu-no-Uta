@@ -1070,6 +1070,21 @@ export function App() {
     addTrackToFolder(currentTrack, folderId);
   }
 
+  async function addCurrentTrackToSelectedFolder() {
+    if (!currentTrack) {
+      setMessage('Carga una cancion en el reproductor antes de agregarla a una carpeta.');
+      return;
+    }
+
+    if (selectedFolderId === '__new__') {
+      const folder = await createFolder(undefined, { selectForTrack: true });
+      if (folder) await addTrackToFolder(currentTrack, folder.id);
+      return;
+    }
+
+    addCurrentTrackToFolder(selectedFolderId);
+  }
+
   async function getOrCreateLikesFolder() {
     if (!user) return null;
     if (likesFolder) return likesFolder;
@@ -1615,6 +1630,25 @@ export function App() {
               <button className="close-profile" type="button" onClick={() => setTrackInfoOpen(false)}><X size={18} /></button>
               <img src={currentTrack.cover_url || activeChannel.image} alt={currentTrack.title} />
               <div>
+                <section className="track-info-now-playing">
+                  <h3>{currentTrack.title}</h3>
+                  <p>{currentTrack.artist || 'Sin artista'}</p>
+                  <div className={`progress ${canPlay ? '' : 'empty'}`}><span style={{ width: `${canPlay ? progress : 0}%` }} /></div>
+                  <div className="track-info-times">
+                    <span>{formatTime(currentTime)}</span>
+                    <span>{formatTime(duration || (canPlay ? 228 : 0))}</span>
+                  </div>
+                  <div className="track-info-controls">
+                    <button type="button" onClick={playPreviousFromQueue} title="Anterior"><SkipBack size={24} fill="currentColor" /></button>
+                    <button className="track-info-play" type="button" onClick={togglePlayer} title={isPlaying ? 'Pausar' : 'Reproducir'}>
+                      {isPlaying && canPlay ? <Pause size={28} /> : <Play size={28} fill="currentColor" />}
+                    </button>
+                    <button type="button" onClick={playNextFromQueue} title="Siguiente"><SkipForward size={24} fill="currentColor" /></button>
+                    <button className={currentTrackLiked ? 'liked' : ''} type="button" onClick={() => addTrackToLikes(currentTrack)} title="Me gusta">
+                      <Heart size={24} fill={currentTrackLiked ? 'currentColor' : 'none'} />
+                    </button>
+                  </div>
+                </section>
                 <span className="eyebrow"><Info size={16} /> Informacion</span>
                 <h2>{currentTrack.title}</h2>
                 <dl>
@@ -1658,37 +1692,43 @@ export function App() {
                     {currentTrackLiked ? 'En Me gusta' : 'Me gusta'}
                   </button>
                   <label>
-                    Agregar a carpeta
+                    Agregar carpeta
                     <span className="folder-picker">
-                      <select value={selectedFolderId} onChange={(event) => setSelectedFolderId(event.target.value)}>
+                      <select
+                        value={selectedFolderId}
+                        onChange={(event) => {
+                          setSelectedFolderId(event.target.value);
+                          if (event.target.value === '__new__') {
+                            setFolderForm({ ...folderForm, name: '' });
+                          }
+                        }}
+                      >
                         <option value="">Elige carpeta</option>
                         {libraryFolders.filter((folder) => !folder.is_preview).map((folder) => (
                           <option key={folder.id} value={folder.id}>{folder.name}</option>
                         ))}
+                        <option value="__new__">Otro</option>
                       </select>
                       <button
                         className="folder-add-button"
                         type="button"
-                        disabled={!selectedFolderId}
-                        onClick={() => addCurrentTrackToFolder(selectedFolderId)}
+                        disabled={!selectedFolderId || (selectedFolderId === '__new__' && !folderForm.name.trim())}
+                        onClick={addCurrentTrackToSelectedFolder}
                       >
-                        <Plus size={18} />
+                        Agregar carpeta
                       </button>
                     </span>
                   </label>
-                  <form className="modal-folder-form" onSubmit={(event) => createFolder(event, { selectForTrack: true })}>
-                    <label>
-                      Crear carpeta
-                      <span>
-                        <input
-                          value={folderForm.name}
-                          onChange={(event) => setFolderForm({ ...folderForm, name: event.target.value })}
-                          placeholder="Nueva playlist"
-                        />
-                        <button className="folder-add-button" type="submit"><Plus size={18} /></button>
-                      </span>
+                  {selectedFolderId === '__new__' && (
+                    <label className="modal-new-folder">
+                      Nombre de carpeta
+                      <input
+                        value={folderForm.name}
+                        onChange={(event) => setFolderForm({ ...folderForm, name: event.target.value })}
+                        placeholder="Nueva playlist"
+                      />
                     </label>
-                  </form>
+                  )}
                 </div>
                 <a href={currentTrack.audio_url} target="_blank" rel="noreferrer">Abrir archivo de audio</a>
               </div>
