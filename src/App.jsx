@@ -40,6 +40,7 @@ import sakuraIcon from '../fondos/icono.png';
 import sakuraLetterImage from '../fondos/letra.png';
 import sakuraSidebarImage from '../fondos/sakura-sidebar-bg.png';
 import googleLogo from '../fondos/Logo_google.jpg';
+import appIcon from '../fondos/aplicacion.png';
 
 const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
 const fallbackAvatar = 'https://api.dicebear.com/8.x/adventurer/svg?seed=Enrique&backgroundColor=1f2937';
@@ -109,7 +110,9 @@ const emptyTrackForm = {
   genre: 'anime',
   custom_genre: '',
   cover_url: '',
+  source_mode: '',
   audio: null,
+  youtube_url: '',
   metadata_source: ''
 };
 
@@ -150,6 +153,10 @@ function normalizeFolderName(name = '') {
 
 function isLikesFolderName(name = '') {
   return ['me gusta', 'tus me gusta'].includes(normalizeFolderName(name));
+}
+
+function isYoutubeUrl(url = '') {
+  return /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//i.test(url.trim());
 }
 
 export function App() {
@@ -209,6 +216,11 @@ export function App() {
 
   useEffect(() => {
     let mounted = true;
+    const favicon = document.querySelector("link[rel='icon']");
+    if (favicon) favicon.href = appIcon;
+
+    document.querySelector("meta[property='og:image']")?.setAttribute('content', appIcon);
+    document.querySelector("meta[name='twitter:image']")?.setAttribute('content', appIcon);
 
     async function loadSession() {
       // Reviso si Supabase ya tiene una sesion activa para mantener abierto el login al recargar.
@@ -355,6 +367,8 @@ export function App() {
       .slice(0, 8);
   }, [tracks]);
 
+  const currentTrackIsYoutube = Boolean(currentTrack && (isYoutubeUrl(currentTrack.audio_url) || currentTrack.storage_path?.startsWith('youtube:')));
+  const canStream = Boolean(currentTrack?.audio_url && !currentTrackIsYoutube);
   const canPlay = Boolean(currentTrack?.audio_url);
   const likesFolders = useMemo(
     () => folders.filter((folder) => folder.owner_id === user?.id && isLikesFolderName(folder.name)),
@@ -464,14 +478,14 @@ export function App() {
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !currentTrack?.audio_url) return;
+    if (!audio || !canStream) return;
 
     if (isPlaying) {
       audio.play().catch(() => setIsPlaying(false));
     } else {
       audio.pause();
     }
-  }, [isPlaying, currentTrack?.audio_url]);
+  }, [isPlaying, canStream, currentTrack?.audio_url]);
 
   useEffect(() => {
     if (!trackInfoOpen) return;
@@ -767,6 +781,7 @@ export function App() {
     setTrackForm((current) => ({
       ...current,
       audio: file,
+      youtube_url: '',
       title: current.title || cleanTitle
     }));
   }
@@ -784,11 +799,23 @@ export function App() {
       ['Album', trackForm.album],
       ['Genero', trackForm.genre],
       ['Portada por URL', trackForm.cover_url],
-      ['Archivo de audio', trackForm.audio]
+      ['Tipo de subida', trackForm.source_mode]
     ];
 
     if (trackForm.genre === 'otros') {
       requiredFields.push(['Genero personalizado', trackForm.custom_genre]);
+    }
+
+    if (trackForm.source_mode === 'file') {
+      requiredFields.push(['Archivo de audio', trackForm.audio]);
+    }
+
+    if (trackForm.source_mode === 'youtube') {
+      requiredFields.push(['Link de YouTube', trackForm.youtube_url]);
+      if (trackForm.youtube_url && !isYoutubeUrl(trackForm.youtube_url)) {
+        setMessage('El link debe ser de youtube.com o youtu.be.');
+        return;
+      }
     }
 
     const missingField = requiredFields.find(([, value]) => !value || (typeof value === 'string' && !value.trim()));
@@ -801,32 +828,42 @@ export function App() {
     setUploadingTrack(true);
     setMessage('');
 
-    const extension = trackForm.audio.name.split('.').pop() || 'mp3';
-    const filePath = `${user.id}/${crypto.randomUUID()}.${extension}`;
-    const contentType =
-      ['mpeg', 'mpg', 'mpga', 'mp3'].includes(extension.toLowerCase())
-        ? 'audio/mpeg'
-        : trackForm.audio.type || 'audio/mpeg';
+    let filePath = '';
+    let audioUrl = '';
 
-    // Subo el archivo de audio al bucket publico songs para poder reproducirlo desde la app.
-    const { error: uploadError } = await supabase.storage
-      .from('songs')
-      .upload(filePath, trackForm.audio, {
-        cacheControl: '3600',
-        contentType,
-        upsert: false
-      });
+    if (trackForm.source_mode === 'file') {
+      const extension = trackForm.audio.name.split('.').pop() || 'mp3';
+      filePath = `${user.id}/${crypto.randomUUID()}.${extension}`;
+      const contentType =
+        ['mpeg', 'mpg', 'mpga', 'mp3'].includes(extension.toLowerCase())
+          ? 'audio/mpeg'
+          : trackForm.audio.type || 'audio/mpeg';
 
-    if (uploadError) {
-      setMessage(uploadError.message);
-      setUploadingTrack(false);
-      return;
+      // Subo el archivo de audio al bucket publico songs para poder reproducirlo desde la app.
+      const { error: uploadError } = await supabase.storage
+        .from('songs')
+        .upload(filePath, trackForm.audio, {
+          cacheControl: '3600',
+          contentType,
+          upsert: false
+        });
+
+      if (uploadError) {
+        setMessage(uploadError.message);
+        setUploadingTrack(false);
+        return;
+      }
+
+      // Obtengo la URL publica del audio recien subido para guardarla junto con la cancion.
+      const { data: publicUrlData } = supabase.storage
+        .from('songs')
+        .getPublicUrl(filePath);
+
+      audioUrl = publicUrlData.publicUrl;
+    } else {
+      audioUrl = trackForm.youtube_url.trim();
+      filePath = `youtube:${crypto.randomUUID()}`;
     }
-
-    // Obtengo la URL publica del audio recien subido para guardarla junto con la cancion.
-    const { data: publicUrlData } = supabase.storage
-      .from('songs')
-      .getPublicUrl(filePath);
 
     // Registro la cancion en la tabla tracks para que aparezca en biblioteca y busqueda.
     const newTrackPayload = {
@@ -836,9 +873,9 @@ export function App() {
       album: trackForm.album.trim(),
       genre: trackForm.genre === 'otros' ? trackForm.custom_genre.trim() : trackForm.genre,
       cover_url: trackForm.cover_url.trim(),
-      audio_url: publicUrlData.publicUrl,
+      audio_url: audioUrl,
       storage_path: filePath,
-      metadata_source: trackForm.metadata_source || null
+      metadata_source: trackForm.source_mode === 'youtube' ? 'YouTube' : (trackForm.metadata_source || null)
     };
 
     const { error: insertError } = await supabase
@@ -1203,6 +1240,12 @@ export function App() {
     setActiveChannel(getDisplayChannelByGenre(track.genre));
     setProgress(0);
     setCurrentTime(0);
+    if (isYoutubeUrl(track.audio_url) || track.storage_path?.startsWith('youtube:')) {
+      setIsPlaying(false);
+      window.open(track.audio_url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
     setIsPlaying(true);
   }
 
@@ -1227,6 +1270,13 @@ export function App() {
       }
       return;
     }
+
+    if (currentTrackIsYoutube) {
+      window.open(currentTrack.audio_url, '_blank', 'noopener,noreferrer');
+      setIsPlaying(false);
+      return;
+    }
+
     setIsPlaying((playing) => !playing);
   }
 
@@ -1730,7 +1780,9 @@ export function App() {
                     </label>
                   )}
                 </div>
-                <a href={currentTrack.audio_url} target="_blank" rel="noreferrer">Abrir archivo de audio</a>
+                <a href={currentTrack.audio_url} target="_blank" rel="noreferrer">
+                  {currentTrackIsYoutube ? 'Abrir en YouTube' : 'Abrir archivo de audio'}
+                </a>
               </div>
             </article>
           </section>
@@ -2129,6 +2181,24 @@ export function App() {
                 <p>El archivo se guarda en Supabase Storage y aparece en tu biblioteca.</p>
               </div>
               <form onSubmit={uploadTrack}>
+                <div className="upload-source-choice">
+                  <button
+                    className={trackForm.source_mode === 'file' ? 'active' : ''}
+                    type="button"
+                    onClick={() => setTrackForm({ ...trackForm, source_mode: 'file', youtube_url: '' })}
+                  >
+                    Seleccionar archivo
+                  </button>
+                  <button
+                    className={trackForm.source_mode === 'youtube' ? 'active' : ''}
+                    type="button"
+                    onClick={() => setTrackForm({ ...trackForm, source_mode: 'youtube', audio: null })}
+                  >
+                    Link de YouTube
+                  </button>
+                </div>
+                {trackForm.source_mode && (
+                  <>
                 <label>
                   Titulo
                   <input required value={trackForm.title} onChange={(event) => setTrackForm({ ...trackForm, title: event.target.value })} placeholder="Nombre de la cancion" />
@@ -2179,15 +2249,24 @@ export function App() {
                 {trackForm.cover_url && (
                   <img className="cover-preview" src={trackForm.cover_url} alt="Portada seleccionada" />
                 )}
-                <label className="file-picker">
-                  Archivo de audio
-                  <input required type="file" accept="audio/*,.mp3,.mpeg,.mpga,.wav,.ogg,.webm" onChange={(event) => handleAudioFile(event.target.files?.[0] ?? null)} />
-                  <span>{trackForm.audio?.name || 'Selecciona mp3, mpeg, wav, ogg...'}</span>
-                </label>
+                {trackForm.source_mode === 'file' ? (
+                  <label className="file-picker">
+                    Archivo de audio
+                    <input required type="file" accept="audio/*,.mp3,.mpeg,.mpga,.wav,.ogg,.webm" onChange={(event) => handleAudioFile(event.target.files?.[0] ?? null)} />
+                    <span>{trackForm.audio?.name || 'Selecciona mp3, mpeg, wav, ogg...'}</span>
+                  </label>
+                ) : (
+                  <label>
+                    Link de YouTube
+                    <input required type="url" value={trackForm.youtube_url} onChange={(event) => setTrackForm({ ...trackForm, youtube_url: event.target.value, audio: null })} placeholder="https://www.youtube.com/watch?v=..." />
+                  </label>
+                )}
                 <button className="primary" type="submit" disabled={uploadingTrack}>
                   <Upload size={18} />
                   {uploadingTrack ? 'Subiendo...' : 'Subir cancion'}
                 </button>
+                  </>
+                )}
               </form>
             </section>
           )}
@@ -2259,7 +2338,7 @@ export function App() {
           />
           <button className="plain-player-button" type="button" onClick={() => setProfileOpen((open) => !open)} title="Ajustes"><Settings size={18} /></button>
         </div>
-        {currentTrack?.audio_url && (
+        {canStream && (
           <audio
             ref={audioRef}
             className="audio-player"

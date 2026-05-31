@@ -1233,6 +1233,26 @@ select:focus { border-color: var(--green); }
   gap: 14px;
 }
 
+.upload-source-choice {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.upload-source-choice button {
+  min-height: 54px;
+  border: 1px solid rgba(255, 143, 189, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-weight: 900;
+}
+
+.upload-source-choice button.active {
+  background: #ff8fbd;
+  color: #16050e;
+}
+
 .folders-view {
   display: grid;
   grid-template-columns: minmax(300px, 390px) minmax(0, 1fr);
