@@ -652,7 +652,7 @@ select:focus { border-color: var(--green); }
 .track-info-modal {
   position: relative;
   width: min(980px, 100%);
-  max-height: calc(100vh - 40px);
+  max-height: min(860px, calc(100vh - 172px));
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #181818;
@@ -661,13 +661,13 @@ select:focus { border-color: var(--green); }
   grid-template-columns: 220px minmax(0, 1fr);
   gap: 22px;
   overflow-y: auto;
-  padding: 22px;
+  padding: 22px 22px 54px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 143, 189, 0.75) rgba(255, 255, 255, 0.06);
 }
 
 .track-info-modal::-webkit-scrollbar {
-  width: 9px;
+  width: 12px;
 }
 
 .track-info-modal::-webkit-scrollbar-track {
@@ -677,6 +677,7 @@ select:focus { border-color: var(--green); }
 
 .track-info-modal::-webkit-scrollbar-thumb {
   background: rgba(255, 143, 189, 0.75);
+  border: 3px solid rgba(255, 255, 255, 0.06);
   border-radius: 999px;
 }
 
@@ -3556,19 +3557,20 @@ body {
     display: grid !important;
     gap: 18px !important;
     grid-template-columns: 1fr !important;
-    height: calc(100dvh - 10px) !important;
-    max-height: calc(100dvh - 10px) !important;
+    height: calc(100dvh - 102px) !important;
+    max-height: calc(100dvh - 102px) !important;
     overflow-y: auto !important;
-    padding: 18px 16px 38px !important;
+    padding: 18px 16px 86px !important;
     scrollbar-color: #ff8fbd rgba(255, 255, 255, 0.08) !important;
   }
 
   .track-info-modal::-webkit-scrollbar {
-    width: 8px !important;
+    width: 10px !important;
   }
 
   .track-info-modal::-webkit-scrollbar-thumb {
     background: #ff8fbd !important;
+    border: 2px solid rgba(255, 255, 255, 0.08) !important;
     border-radius: 999px !important;
   }
 
