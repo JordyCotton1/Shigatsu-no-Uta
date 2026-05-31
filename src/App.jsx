@@ -188,6 +188,7 @@ export function App() {
   const [volume, setVolume] = useState(78);
   const [profileOpen, setProfileOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
+  const [avatarMode, setAvatarMode] = useState('url');
   const [avatarFile, setAvatarFile] = useState(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [trackInfoOpen, setTrackInfoOpen] = useState(false);
@@ -234,6 +235,7 @@ export function App() {
     if (!user) {
       setProfile(null);
       setProfileForm({ username: '', avatar_url: '' });
+      setAvatarMode('url');
       setAvatarFile(null);
       return;
     }
@@ -1510,16 +1512,23 @@ export function App() {
                   <form className="profile-editor" onSubmit={saveProfile}>
                     <img className="profile-avatar-preview" src={avatarPreviewUrl || profileForm.avatar_url || avatar} alt="Vista previa del perfil" />
                     <label>Nombre<input value={profileForm.username} onChange={(event) => setProfileForm({ ...profileForm, username: event.target.value })} /></label>
-                    <label>URL avatar<input value={profileForm.avatar_url} onChange={(event) => setProfileForm({ ...profileForm, avatar_url: event.target.value })} /></label>
-                    <label className="profile-avatar-picker">
-                      Subir foto
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(event) => setAvatarFile(event.target.files?.[0] ?? null)}
-                      />
-                      <span>{avatarFile?.name || 'Selecciona una imagen'}</span>
-                    </label>
+                    <div className="avatar-mode-tabs">
+                      <button className={avatarMode === 'url' ? 'active' : ''} type="button" onClick={() => setAvatarMode('url')}>URL</button>
+                      <button className={avatarMode === 'file' ? 'active' : ''} type="button" onClick={() => setAvatarMode('file')}>Subir foto</button>
+                    </div>
+                    {avatarMode === 'url' ? (
+                      <label>URL avatar<input value={profileForm.avatar_url} onChange={(event) => setProfileForm({ ...profileForm, avatar_url: event.target.value })} /></label>
+                    ) : (
+                      <label className="profile-avatar-picker">
+                        Subir foto
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(event) => setAvatarFile(event.target.files?.[0] ?? null)}
+                        />
+                        <span>{avatarFile?.name || 'Selecciona una imagen'}</span>
+                      </label>
+                    )}
                     <button className="primary" type="submit" disabled={savingProfile}>
                       {savingProfile ? 'Guardando...' : 'Guardar perfil'}
                     </button>
