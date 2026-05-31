@@ -953,8 +953,26 @@ select:focus { border-color: var(--green); }
   padding: 0 14px;
 }
 
+.modal-new-folder {
+  display: grid;
+  gap: 12px;
+}
+
 .modal-new-folder input {
   min-height: 48px;
+}
+
+.modal-share-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 800;
+}
+
+.modal-share-row input {
+  width: 18px;
+  min-height: 18px;
+  accent-color: var(--pink);
 }
 
 .modal-folder-form {

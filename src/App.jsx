@@ -198,6 +198,7 @@ export function App() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationsReadAt, setNotificationsReadAt] = useState(() => Number(localStorage.getItem('notificationsReadAt') || 0));
+  const [playCounts, setPlayCounts] = useState({});
   const [editingProfile, setEditingProfile] = useState(false);
   const [avatarMode, setAvatarMode] = useState('url');
   const [avatarFile, setAvatarFile] = useState(null);
@@ -253,6 +254,7 @@ export function App() {
       setProfileForm({ username: '', avatar_url: '' });
       setAvatarMode('url');
       setAvatarFile(null);
+      setPlayCounts({});
       return;
     }
 
@@ -260,6 +262,12 @@ export function App() {
     loadTracks();
     loadCategoryCovers();
     if (folderTablesReady) loadFolders();
+
+    try {
+      setPlayCounts(JSON.parse(localStorage.getItem(`playCounts:${user.id}`) || '{}'));
+    } catch {
+      setPlayCounts({});
+    }
   }, [user?.id]);
 
   useEffect(() => {
@@ -375,21 +383,62 @@ export function App() {
 
   const recommendedTracks = useMemo(() => {
     const playableTracks = tracks.filter((track) => track?.audio_url);
-    const albumCounts = playableTracks.reduce((counts, track) => {
-      const album = track.album?.trim();
-      if (!album) return counts;
-      counts.set(album.toLowerCase(), (counts.get(album.toLowerCase()) || 0) + 1);
-      return counts;
-    }, new Map());
+    const normalizeKey = (value = '') => value.trim().toLowerCase();
+    const addScore = (scores, key, value) => {
+      if (!key) return;
+      scores.set(key, (scores.get(key) || 0) + value);
+    };
 
-    return [...playableTracks]
-      .sort((a, b) => {
-        const albumScoreA = albumCounts.get(a.album?.trim().toLowerCase()) || 0;
-        const albumScoreB = albumCounts.get(b.album?.trim().toLowerCase()) || 0;
-        return albumScoreB - albumScoreA || new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    const userFolderIds = new Set(
+      folders
+        .filter((folder) => folder.owner_id === user?.id || folder.shared_with === user?.id)
+        .map((folder) => folder.id)
+    );
+    const savedTrackIds = new Set(
+      folderTracks
+        .filter((item) => userFolderIds.has(item.folder_id))
+        .map((item) => item.track_id)
+    );
+    const albumScores = new Map();
+    const artistScores = new Map();
+    const genreScores = new Map();
+    const albumPopularity = new Map();
+
+    for (const track of playableTracks) {
+      addScore(albumPopularity, normalizeKey(track.album), 1);
+
+      const plays = Number(playCounts[track.id] || 0);
+      const isSaved = savedTrackIds.has(track.id);
+      if (!plays && !isSaved) continue;
+
+      addScore(albumScores, normalizeKey(track.album), plays * 6 + (isSaved ? 4 : 0));
+      addScore(artistScores, normalizeKey(track.artist), plays * 4 + (isSaved ? 3 : 0));
+      addScore(genreScores, normalizeKey(track.genre), plays * 3 + (isSaved ? 2 : 0));
+    }
+
+    return playableTracks
+      .map((track) => {
+        const albumKey = normalizeKey(track.album);
+        const artistKey = normalizeKey(track.artist);
+        const genreKey = normalizeKey(track.genre);
+        const directPlays = Number(playCounts[track.id] || 0);
+        const score =
+          directPlays * 10 +
+          (savedTrackIds.has(track.id) ? 6 : 0) +
+          (albumScores.get(albumKey) || 0) +
+          (artistScores.get(artistKey) || 0) +
+          (genreScores.get(genreKey) || 0) +
+          (albumPopularity.get(albumKey) || 0) * 0.5;
+
+        return { track, score };
       })
-      .slice(0, 5);
-  }, [tracks]);
+      .sort((a, b) =>
+        b.score - a.score ||
+        new Date(b.track.created_at || 0) - new Date(a.track.created_at || 0)
+      )
+      .slice(0, 5)
+      .map((item) => item.track);
+  }, [folderTracks, folders, playCounts, tracks, user?.id]);
   const recentNotifications = useMemo(() => (
     [...tracks]
       .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
@@ -1294,6 +1343,19 @@ export function App() {
     setCurrentTime(0);
   }
 
+  function recordTrackPlay(track) {
+    if (!user?.id || !track?.id) return;
+
+    setPlayCounts((currentCounts) => {
+      const nextCounts = {
+        ...currentCounts,
+        [track.id]: Number(currentCounts[track.id] || 0) + 1
+      };
+      localStorage.setItem(`playCounts:${user.id}`, JSON.stringify(nextCounts));
+      return nextCounts;
+    });
+  }
+
   function playTrackQueue(queue, startIndex = 0) {
     const playableQueue = queue.filter((track) => track?.audio_url);
     if (playableQueue.length === 0) return;
@@ -1306,6 +1368,7 @@ export function App() {
     setActiveChannel(getDisplayChannelByGenre(track.genre));
     setProgress(0);
     setCurrentTime(0);
+    recordTrackPlay(track);
     if (isYoutubeUrl(track.audio_url) || track.storage_path?.startsWith('youtube:')) {
       setIsPlaying(false);
       window.open(track.audio_url, '_blank', 'noopener,noreferrer');
@@ -1845,7 +1908,7 @@ export function App() {
                         onChange={(event) => {
                           setSelectedFolderId(event.target.value);
                           if (event.target.value === '__new__') {
-                            setFolderForm({ ...folderForm, name: '' });
+                            setFolderForm({ ...folderForm, name: '', is_shared: false, share_email: '' });
                           }
                         }}
                       >
@@ -1866,14 +1929,39 @@ export function App() {
                     </span>
                   </label>
                   {selectedFolderId === '__new__' && (
-                    <label className="modal-new-folder">
-                      Nombre de carpeta
-                      <input
-                        value={folderForm.name}
-                        onChange={(event) => setFolderForm({ ...folderForm, name: event.target.value })}
-                        placeholder="Nueva playlist"
-                      />
-                    </label>
+                    <div className="modal-new-folder">
+                      <label>
+                        Nombre de carpeta
+                        <input
+                          value={folderForm.name}
+                          onChange={(event) => setFolderForm({ ...folderForm, name: event.target.value })}
+                          placeholder="Nueva playlist"
+                        />
+                      </label>
+                      <label className="modal-share-row">
+                        <input
+                          type="checkbox"
+                          checked={folderForm.is_shared}
+                          onChange={(event) => setFolderForm({
+                            ...folderForm,
+                            is_shared: event.target.checked,
+                            share_email: event.target.checked ? folderForm.share_email : ''
+                          })}
+                        />
+                        Compartida
+                      </label>
+                      {folderForm.is_shared && (
+                        <label>
+                          Correo del amigo
+                          <input
+                            type="email"
+                            value={folderForm.share_email}
+                            onChange={(event) => setFolderForm({ ...folderForm, share_email: event.target.value })}
+                            placeholder="amigo@email.com"
+                          />
+                        </label>
+                      )}
+                    </div>
                   )}
                 </div>
                 <a href={currentTrack.audio_url} target="_blank" rel="noreferrer">
