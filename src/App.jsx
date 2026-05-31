@@ -631,7 +631,7 @@ export function App() {
         }
       });
 
-      setMessage(error ? error.message : 'Cuenta creada. Revisa tu correo si Supabase pide confirmacion.');
+      setMessage(error ? error.message : 'Cuenta creada con exito. Revisa tu correo para confirmar y luego inicia sesion.');
       return;
     }
 
