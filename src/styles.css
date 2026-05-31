@@ -3474,3 +3474,84 @@ body {
     width: 58px !important;
   }
 }
+
+@media (max-width: 760px) {
+  .player {
+    bottom: 78px !important;
+    grid-template-columns: minmax(0, 1fr) 58px !important;
+    height: 84px !important;
+    left: 12px !important;
+    right: 12px !important;
+    padding: 10px 12px !important;
+  }
+
+  .player-track {
+    cursor: pointer !important;
+    display: grid !important;
+    grid-template-columns: 56px minmax(0, 1fr) 42px !important;
+    gap: 10px !important;
+    min-width: 0 !important;
+  }
+
+  .player-track img {
+    border-radius: 8px !important;
+    height: 56px !important;
+    width: 56px !important;
+  }
+
+  .player-track div {
+    align-self: center !important;
+    min-width: 0 !important;
+  }
+
+  .player-track strong {
+    font-size: 1.06rem !important;
+    line-height: 1.1 !important;
+  }
+
+  .player-track span {
+    font-size: 0.88rem !important;
+  }
+
+  .player-track .player-heart {
+    align-self: center !important;
+    background: transparent !important;
+    color: #ff8fbd !important;
+    display: grid !important;
+    height: 42px !important;
+    justify-self: end !important;
+    width: 42px !important;
+  }
+
+  .player-track .player-heart.active {
+    color: #ff8fbd !important;
+  }
+
+  .player-center {
+    display: grid !important;
+    place-items: center !important;
+  }
+
+  .player-controls {
+    display: contents !important;
+  }
+
+  .player-controls .plain-player-button,
+  .player-controls .plain-player-button:first-child,
+  .player-controls .plain-player-button:last-child {
+    display: none !important;
+  }
+
+  .player .player-toggle {
+    background: #ff7db6 !important;
+    color: #050505 !important;
+    display: grid !important;
+    height: 58px !important;
+    width: 58px !important;
+  }
+
+  .player-progress,
+  .player-extra {
+    display: none !important;
+  }
+}

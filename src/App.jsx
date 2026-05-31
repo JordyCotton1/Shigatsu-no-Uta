@@ -2155,13 +2155,24 @@ export function App() {
       </section>
 
       <footer className="player" style={{ '--accent': activeChannel.accent }}>
-        <div className="player-track">
+        <div
+          className="player-track"
+          role="button"
+          tabIndex={currentTrack ? 0 : -1}
+          onClick={openTrackInfo}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') openTrackInfo();
+          }}
+        >
           <img src={currentTrack?.cover_url || recommendedTrack.cover} alt={currentTrack?.title || recommendedTrack.title} />
           <div><strong>{currentTrack?.title || recommendedTrack.title}</strong><span>{currentTrack?.artist || recommendedTrack.artist}</span></div>
           <button
             className={`plain-player-button player-heart ${currentTrackLiked ? 'active' : ''}`}
             disabled={!currentTrack}
-            onClick={() => currentTrack && addTrackToLikes(currentTrack)}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (currentTrack) addTrackToLikes(currentTrack);
+            }}
             title="Guardar en Me gusta"
           >
             <Heart size={21} fill={currentTrackLiked ? 'currentColor' : 'none'} />
