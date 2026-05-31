@@ -2910,13 +2910,19 @@ body {
   border-radius: 999px;
   background: var(--green);
   color: #05180c;
+  display: inline-grid;
+  font-size: 0.86rem;
   font-weight: 900;
-  min-height: 42px;
-  padding: 0 18px;
+  min-height: 34px;
+  min-width: 78px;
+  padding: 0 12px;
+  place-items: center;
+  white-space: nowrap;
 }
 
 .pending-track-row {
-  grid-template-columns: 64px 44px minmax(0, 1fr) minmax(80px, 110px) auto 48px;
+  grid-template-columns: 64px 44px minmax(0, 1fr) minmax(80px, 110px) 82px 44px;
+  gap: 10px;
 }
 
 .more-button {

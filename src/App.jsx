@@ -506,8 +506,11 @@ export function App() {
       ...channel,
       image: categoryCovers[channel.id] || channel.image
     }));
+    const principalChannels = showAllMixes
+      ? defaultChannels.filter((channel) => channel.id !== 'otros')
+      : defaultChannels;
 
-    return showAllMixes ? [...defaultChannels, ...customGenreChannels] : defaultChannels;
+    return showAllMixes ? [...principalChannels, ...customGenreChannels] : principalChannels;
   }, [categoryCovers, customGenreChannels, showAllMixes]);
 
   const visibleChannels = useMemo(() => {
@@ -750,6 +753,12 @@ export function App() {
     if (!track || !channel) return false;
     if (channel.customGenre) {
       return normalizeFolderName(track.genre) === normalizeFolderName(channel.customGenre);
+    }
+
+    if (channel.id === 'otros') {
+      const directChannel = channels.find((item) => item.id === track.genre);
+      const channelNameMatch = channels.some((item) => normalizeFolderName(item.name) === normalizeFolderName(track.genre));
+      return !directChannel && !channelNameMatch;
     }
 
     return getChannelByGenre(track.genre)?.id === channel.id;
@@ -1298,23 +1307,7 @@ export function App() {
     setTrackForm(emptyTrackForm);
     setMetadataResults([]);
     setSelectedMetadataKey('');
-    let reviewMessage = isAdmin ? 'Cancion subida correctamente.' : 'Cancion enviada a revision. El admin debe aprobarla antes de que aparezca para todos.';
-
-    if (!isAdmin) {
-      const { error: notifyError } = await supabase.functions.invoke('notify-admin', {
-        body: {
-          ...newTrackPayload,
-          user_email: user.email,
-          username: getDisplayName(user, profile)
-        }
-      });
-
-      reviewMessage = notifyError
-        ? `Cancion enviada a revision, pero no se pudo avisar al admin: ${notifyError.message}`
-        : 'Cancion enviada a revision. Se aviso al admin para aprobarla.';
-    }
-
-    setMessage(reviewMessage);
+    setMessage(isAdmin ? 'Cancion subida correctamente.' : 'Cancion enviada a revision. El admin la vera en canciones pendientes.');
     setUploadingTrack(false);
     setActiveView('library');
     loadTracks();
