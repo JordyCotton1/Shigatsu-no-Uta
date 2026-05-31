@@ -51,6 +51,7 @@ const recommendedTrack = {
   artist: 'TentaBeat',
   cover: sakuraIcon
 };
+const approvalPrefix = 'approval:';
 
 const channels = [
   {
@@ -184,6 +185,22 @@ function getYoutubeEmbedUrl(url = '', playing = false) {
     playsinline: '1'
   });
   return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+}
+
+function getTrackApprovalStatus(track) {
+  const source = track?.metadata_source || '';
+  if (!source.startsWith(approvalPrefix)) return 'approved';
+  return source.slice(approvalPrefix.length).split('|')[0] || 'approved';
+}
+
+function getTrackMetadataSource(track) {
+  const source = track?.metadata_source || '';
+  if (!source.startsWith(approvalPrefix)) return source || 'Manual';
+  return source.slice(approvalPrefix.length).split('|').slice(1).join('|') || 'Manual';
+}
+
+function withApprovalStatus(status, source = '') {
+  return `${approvalPrefix}${status}|${source || 'Manual'}`;
 }
 
 function hashText(text = '') {
@@ -402,21 +419,31 @@ export function App() {
     return () => document.removeEventListener('pointerdown', closeMenu);
   }, []);
 
+  const publicTracks = useMemo(() => (
+    tracks.filter((track) => isAdmin || getTrackApprovalStatus(track) === 'approved')
+  ), [isAdmin, tracks]);
+  const ownTracks = useMemo(() => (
+    tracks.filter((track) => track.user_id === user?.id)
+  ), [tracks, user?.id]);
+  const pendingTracks = useMemo(() => (
+    tracks.filter((track) => getTrackApprovalStatus(track) === 'pending')
+  ), [tracks]);
+
   const visibleTracks = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return tracks;
+    if (!normalized) return publicTracks;
 
-    return tracks.filter((track) =>
+    return publicTracks.filter((track) =>
       [track.title, track.artist, track.genre].join(' ').toLowerCase().includes(normalized)
     );
-  }, [query, tracks]);
+  }, [publicTracks, query]);
 
   const customGenreOptions = useMemo(() => {
     const channelIds = new Set(channels.map((channel) => channel.id));
     const channelNames = new Set(channels.map((channel) => channel.name.toLowerCase()));
     const seen = new Set();
 
-    return tracks
+    return publicTracks
       .map((track) => track.genre?.trim())
       .filter(Boolean)
       .filter((genre) => !channelIds.has(genre) && !channelNames.has(genre.toLowerCase()))
@@ -427,11 +454,11 @@ export function App() {
         return true;
       })
       .sort((a, b) => a.localeCompare(b));
-  }, [tracks]);
+  }, [publicTracks]);
 
   const customGenreChannels = useMemo(() => (
     customGenreOptions.map((genre, index) => {
-      const genreTracks = tracks.filter((track) => normalizeFolderName(track.genre) === normalizeFolderName(genre));
+      const genreTracks = publicTracks.filter((track) => normalizeFolderName(track.genre) === normalizeFolderName(genre));
       const accent = channels[index % channels.length]?.accent || '#ff8fbd';
       const id = `custom-${normalizeFolderName(genre).replace(/[^a-z0-9]+/g, '-')}`;
 
@@ -445,7 +472,7 @@ export function App() {
         tracks: genreTracks.map((track) => track.title)
       };
     })
-  ), [categoryCovers, customGenreOptions, tracks]);
+  ), [categoryCovers, customGenreOptions, publicTracks]);
 
   const mixChannels = useMemo(() => {
     const defaultChannels = channels.map((channel) => ({
@@ -467,7 +494,7 @@ export function App() {
   const featuredArtists = useMemo(() => {
     const artists = new Map();
 
-    for (const track of tracks) {
+    for (const track of publicTracks) {
       const artistName = track.artist?.trim();
       if (!artistName) continue;
 
@@ -493,10 +520,10 @@ export function App() {
     return Array.from(artists.values())
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
       .slice(0, 8);
-  }, [tracks]);
+  }, [publicTracks]);
 
   const recommendedTracks = useMemo(() => {
-    const playableTracks = tracks.filter((track) => track?.audio_url);
+    const playableTracks = publicTracks.filter((track) => track?.audio_url);
     const normalizeKey = (value = '') => value.trim().toLowerCase();
     const addScore = (scores, key, value) => {
       if (!key) return;
@@ -552,12 +579,12 @@ export function App() {
       )
       .slice(0, 5)
       .map((item) => item.track);
-  }, [folderTracks, folders, playCounts, tracks, user?.id]);
+  }, [folderTracks, folders, playCounts, publicTracks, user?.id]);
   const recentNotifications = useMemo(() => (
-    [...tracks]
+    [...publicTracks]
       .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
       .slice(0, 8)
-  ), [tracks]);
+  ), [publicTracks]);
   const unreadNotifications = recentNotifications.filter((track) => new Date(track.created_at || 0).getTime() > notificationsReadAt).length;
 
   const currentTrackIsYoutube = Boolean(currentTrack && (isYoutubeUrl(currentTrack.audio_url) || currentTrack.storage_path?.startsWith('youtube:')));
@@ -634,8 +661,8 @@ export function App() {
   }, [activeFolder, folderTracks, likesFolders]);
   const openedCatalogTracks = useMemo(() => {
     if (!openedCatalog) return [];
-    return tracks.filter((track) => trackMatchesChannel(track, openedCatalog));
-  }, [openedCatalog, tracks]);
+    return publicTracks.filter((track) => trackMatchesChannel(track, openedCatalog));
+  }, [openedCatalog, publicTracks]);
 
   function getDisplayChannelByGenre(genre) {
     const customChannel = customGenreChannels.find((channel) => normalizeFolderName(channel.customGenre) === normalizeFolderName(genre));
@@ -684,6 +711,21 @@ export function App() {
       audio.pause();
     }
   }, [isPlaying, canStream, currentTrack?.audio_url]);
+
+  useEffect(() => {
+    if (!currentTrackIsYoutube || !isPlaying) return;
+
+    setDuration((currentDuration) => currentDuration || 202);
+    const timer = window.setInterval(() => {
+      setCurrentTime((current) => {
+        const nextTime = Math.min(current + 1, duration || 202);
+        setProgress(((nextTime / (duration || 202)) * 100) || 0);
+        return nextTime;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [currentTrackIsYoutube, duration, isPlaying, currentTrack?.id]);
 
   useEffect(() => {
     if (!trackInfoOpen) return;
@@ -1098,7 +1140,9 @@ export function App() {
       cover_url: coverUrl,
       audio_url: audioUrl,
       storage_path: filePath,
-      metadata_source: trackForm.source_mode === 'youtube' ? 'YouTube' : (trackForm.metadata_source || null)
+      metadata_source: isAdmin
+        ? (trackForm.source_mode === 'youtube' ? 'YouTube' : (trackForm.metadata_source || null))
+        : withApprovalStatus('pending', trackForm.source_mode === 'youtube' ? 'YouTube' : (trackForm.metadata_source || 'Manual'))
     };
 
     const { error: insertError } = await supabase
@@ -1120,7 +1164,7 @@ export function App() {
     setTrackForm(emptyTrackForm);
     setMetadataResults([]);
     setSelectedMetadataKey('');
-    let reviewMessage = 'Cancion subida correctamente.';
+    let reviewMessage = isAdmin ? 'Cancion subida correctamente.' : 'Cancion enviada a revision. El admin debe aprobarla antes de que aparezca para todos.';
 
     if (!isAdmin) {
       const { error: notifyError } = await supabase.functions.invoke('notify-admin', {
@@ -1132,8 +1176,8 @@ export function App() {
       });
 
       reviewMessage = notifyError
-        ? `Cancion subida correctamente, pero no se pudo enviar el correo al admin: ${notifyError.message}`
-        : 'Cancion subida correctamente. Se envio la informacion al correo del admin.';
+        ? `Cancion enviada a revision, pero no se pudo avisar al admin: ${notifyError.message}`
+        : 'Cancion enviada a revision. Se aviso al admin para aprobarla.';
     }
 
     setMessage(reviewMessage);
@@ -1162,6 +1206,23 @@ export function App() {
     }
 
     if (currentTrack?.id === track.id) setCurrentTrack(null);
+    loadTracks();
+  }
+
+  async function approveTrack(track) {
+    if (!isAdmin || !track?.id) return;
+
+    const { error } = await supabase
+      .from('tracks')
+      .update({ metadata_source: getTrackMetadataSource(track) })
+      .eq('id', track.id);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage('Cancion aprobada. Ya aparece para todos.');
     loadTracks();
   }
 
@@ -1512,6 +1573,7 @@ export function App() {
     setActiveChannel(getDisplayChannelByGenre(track.genre));
     setProgress(0);
     setCurrentTime(0);
+    setDuration(isYoutubeUrl(track.audio_url) || track.storage_path?.startsWith('youtube:') ? 202 : 0);
     recordTrackPlay(track);
     setIsPlaying(true);
   }
@@ -1523,7 +1585,7 @@ export function App() {
     const uploadedQueue = visibleTracks.filter((track) => track?.audio_url);
     if (uploadedQueue.length > 0) return uploadedQueue;
 
-    return tracks.filter((track) => track?.audio_url);
+    return publicTracks.filter((track) => track?.audio_url);
   }
 
   function togglePlayer() {
@@ -1998,7 +2060,7 @@ export function App() {
                   <div><dt>Artista</dt><dd>{currentTrack.artist || 'Sin dato'}</dd></div>
                   <div><dt>Album</dt><dd>{currentTrack.album || 'Sin dato'}</dd></div>
                   <div><dt>Genero</dt><dd>{currentTrack.genre || 'Sin dato'}</dd></div>
-                  <div><dt>Fuente de datos</dt><dd>{currentTrack.metadata_source || 'Manual'}</dd></div>
+                  <div><dt>Fuente de datos</dt><dd>{getTrackMetadataSource(currentTrack)}</dd></div>
                   <div><dt>Estado</dt><dd>{isPlaying ? 'Reproduciendo' : 'En pausa/listo'}</dd></div>
                 </dl>
                 {isAdmin && (
@@ -2140,7 +2202,7 @@ export function App() {
               <div className="playlist-grid">
                 {visibleChannels.map((channel) => (
                   (() => {
-                    const channelTracks = tracks.filter((track) => trackMatchesChannel(track, channel));
+                    const channelTracks = publicTracks.filter((track) => trackMatchesChannel(track, channel));
                     const isChannelCurrent = currentTrack && trackMatchesChannel(currentTrack, channel);
                     return (
                       <article
@@ -2263,6 +2325,24 @@ export function App() {
                 </article>
               )}
 
+              {isAdmin && pendingTracks.length > 0 && (
+                <>
+                  <div className="section-head"><h2>Canciones pendientes</h2><span>{pendingTracks.length} por aprobar</span></div>
+                  <div className="track-list pending-track-list">
+                    {pendingTracks.map((track) => (
+                      <article className="track-row pending-track-row" key={track.id}>
+                        <img src={track.cover_url || getDisplayChannelByGenre(track.genre).image} alt={track.title} />
+                        <button className="row-play" type="button" onClick={() => selectTrack(track)} title="Revisar esta cancion"><Music2 size={16} /></button>
+                        <div><strong>{track.title}</strong><span>{track.artist}{track.album ? ` - ${track.album}` : ''}</span></div>
+                        <span>Pendiente</span>
+                        <button className="approve-button" type="button" onClick={() => approveTrack(track)}>Aprobar</button>
+                        <button className="danger-button" type="button" onClick={() => deleteTrack(track)}><Trash2 size={17} /></button>
+                      </article>
+                    ))}
+                  </div>
+                </>
+              )}
+
               <div className="section-head recommended-head"><h2><span className="section-flower">✿</span> Canciones recomendadas para ti</h2></div>
               <div className="recommended-list">
                 {recommendedTracks.length === 0 && <p className="empty-state">Sube canciones para crear recomendaciones.</p>}
@@ -2358,14 +2438,14 @@ export function App() {
                         role="button"
                         tabIndex={0}
                         onClick={() => artist.track && playTrackQueue(
-                          tracks.filter((track) => track.artist?.trim().toLowerCase() === artist.name.toLowerCase()),
+                          publicTracks.filter((track) => track.artist?.trim().toLowerCase() === artist.name.toLowerCase()),
                           0
                         )}
                         onKeyDown={(event) => {
                           if ((event.key === 'Enter' || event.key === ' ') && artist.track) {
                             event.preventDefault();
                             playTrackQueue(
-                              tracks.filter((track) => track.artist?.trim().toLowerCase() === artist.name.toLowerCase()),
+                              publicTracks.filter((track) => track.artist?.trim().toLowerCase() === artist.name.toLowerCase()),
                               0
                             );
                           }
@@ -2385,10 +2465,10 @@ export function App() {
 
           {activeView === 'library' && (
             <>
-              <div className="section-head"><h2>Tu biblioteca</h2><span>{tracks.filter((track) => track.user_id === user.id).length} tuyas</span></div>
+              <div className="section-head"><h2>Tu biblioteca</h2><span>{ownTracks.length} tuyas</span></div>
               <div className="track-list">
-                {tracks.filter((track) => track.user_id === user.id).length === 0 && <p className="empty-state">No has subido canciones todavia.</p>}
-                {tracks.filter((track) => track.user_id === user.id).map((track, index, userTracks) => (
+                {ownTracks.length === 0 && <p className="empty-state">No has subido canciones todavia.</p>}
+                {ownTracks.map((track, index, userTracks) => (
                   <article
                     className={`track-row ${currentTrack?.id === track.id ? 'playing' : ''}`}
                     key={track.id}
@@ -2412,7 +2492,7 @@ export function App() {
                       <Music2 size={16} />
                     </button>
                     <div><strong>{track.title}</strong><span>{track.artist}{track.album ? ` - ${track.album}` : ''}</span></div>
-                    <span>{currentTrack?.id === track.id ? (isPlaying ? 'Reproduciendo' : 'Listo') : track.genre}</span>
+                    <span>{getTrackApprovalStatus(track) === 'pending' ? 'Pendiente' : (currentTrack?.id === track.id ? (isPlaying ? 'Reproduciendo' : 'Listo') : track.genre)}</span>
                     <button
                       className={`like-icon-button ${likedTrackIds.has(track.id) ? 'liked' : ''}`}
                       type="button"

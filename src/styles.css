@@ -2696,6 +2696,53 @@ body {
   margin-top: 8px;
 }
 
+.recommended-song div,
+.artist-card h3,
+.artist-card p {
+  min-width: 0;
+}
+
+.recommended-song strong,
+.recommended-song span,
+.artist-card h3,
+.artist-card p,
+.player-track strong,
+.player-track span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recommended-song strong,
+.artist-card h3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.recommended-song span,
+.artist-card p,
+.player-track strong,
+.player-track span {
+  white-space: nowrap;
+}
+
+.approve-button {
+  border: 0;
+  border-radius: 999px;
+  background: var(--green);
+  color: #05180c;
+  font-weight: 900;
+  min-height: 42px;
+  padding: 0 18px;
+}
+
+.pending-track-row {
+  grid-template-columns: 64px 44px minmax(0, 1fr) minmax(80px, 110px) auto 48px;
+}
+
 .more-button {
   border: 0;
   background: transparent;
