@@ -42,8 +42,6 @@ import sakuraSidebarImage from '../fondos/sakura-sidebar-bg.png';
 import googleLogo from '../fondos/Logo_google.jpg';
 
 const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
-const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'saradateamo2002@gmail.com';
-
 const fallbackAvatar = 'https://api.dicebear.com/8.x/adventurer/svg?seed=Enrique&backgroundColor=1f2937';
 const brandName = 'Shigatsu no Uta';
 const brandJapanese = '四月の歌';
@@ -152,24 +150,6 @@ function normalizeFolderName(name = '') {
 
 function isLikesFolderName(name = '') {
   return ['me gusta', 'tus me gusta'].includes(normalizeFolderName(name));
-}
-
-function openAdminReviewEmail(track) {
-  const subject = encodeURIComponent(`Revisar cancion: ${track.title}`);
-  const body = encodeURIComponent([
-    'Nueva cancion subida para revisar:',
-    '',
-    `Titulo: ${track.title}`,
-    `Artista: ${track.artist}`,
-    `Album: ${track.album}`,
-    `Genero: ${track.genre}`,
-    `Portada: ${track.cover_url}`,
-    `Audio: ${track.audio_url}`,
-    '',
-    'Admin: revisa si esta cancion es apta para quedar publicada.'
-  ].join('\n'));
-
-  window.open(`mailto:${adminEmail}?subject=${subject}&body=${body}`, '_blank', 'noopener,noreferrer');
 }
 
 export function App() {
@@ -879,8 +859,23 @@ export function App() {
 
     setTrackForm(emptyTrackForm);
     setMetadataResults([]);
-    if (!isAdmin) openAdminReviewEmail(newTrackPayload);
-    setMessage(isAdmin ? 'Cancion subida correctamente.' : 'Cancion subida correctamente. Se abrio un correo con la informacion para el admin.');
+    let reviewMessage = 'Cancion subida correctamente.';
+
+    if (!isAdmin) {
+      const { error: notifyError } = await supabase.functions.invoke('notify-admin', {
+        body: {
+          ...newTrackPayload,
+          user_email: user.email,
+          username: getDisplayName(user, profile)
+        }
+      });
+
+      reviewMessage = notifyError
+        ? `Cancion subida correctamente, pero no se pudo enviar el correo al admin: ${notifyError.message}`
+        : 'Cancion subida correctamente. Se envio la informacion al correo del admin.';
+    }
+
+    setMessage(reviewMessage);
     setUploadingTrack(false);
     setActiveView('library');
     loadTracks();
