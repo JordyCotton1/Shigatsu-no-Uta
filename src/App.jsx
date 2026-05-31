@@ -196,6 +196,8 @@ export function App() {
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(78);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notificationsReadAt, setNotificationsReadAt] = useState(() => Number(localStorage.getItem('notificationsReadAt') || 0));
   const [editingProfile, setEditingProfile] = useState(false);
   const [avatarMode, setAvatarMode] = useState('url');
   const [avatarFile, setAvatarFile] = useState(null);
@@ -268,7 +270,10 @@ export function App() {
 
   useEffect(() => {
     function closeMenu(event) {
-      if (!menuRef.current?.contains(event.target)) setProfileOpen(false);
+      if (!menuRef.current?.contains(event.target)) {
+        setProfileOpen(false);
+        setNotificationsOpen(false);
+      }
     }
 
     document.addEventListener('pointerdown', closeMenu);
@@ -385,6 +390,12 @@ export function App() {
       })
       .slice(0, 5);
   }, [tracks]);
+  const recentNotifications = useMemo(() => (
+    [...tracks]
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+      .slice(0, 8)
+  ), [tracks]);
+  const unreadNotifications = recentNotifications.filter((track) => new Date(track.created_at || 0).getTime() > notificationsReadAt).length;
 
   const currentTrackIsYoutube = Boolean(currentTrack && (isYoutubeUrl(currentTrack.audio_url) || currentTrack.storage_path?.startsWith('youtube:')));
   const canStream = Boolean(currentTrack?.audio_url && !currentTrackIsYoutube);
@@ -992,6 +1003,41 @@ export function App() {
     setOpenedCatalog((current) => current?.id === channel.id ? { ...current, image: coverUrl } : current);
     setActiveChannel((current) => current?.id === channel.id ? { ...current, image: coverUrl } : current);
     setMessage('Portada de categoria actualizada.');
+  }
+
+  async function uploadCategoryCoverImage(channel, file) {
+    if (!isAdmin || !file) return;
+
+    const extension = file.name.split('.').pop() || 'jpg';
+    const safeId = channel.id.replace(/[^a-z0-9-]/gi, '-');
+    const filePath = `${user.id}/category-covers/${safeId}-${crypto.randomUUID()}.${extension}`;
+    const { error: uploadError } = await supabase.storage
+      .from('songs')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        contentType: file.type || 'image/jpeg',
+        upsert: false
+      });
+
+    if (uploadError) {
+      setMessage(uploadError.message);
+      return;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('songs')
+      .getPublicUrl(filePath);
+
+    setCategoryCoverForms((current) => ({ ...current, [channel.id]: publicUrlData.publicUrl }));
+    setMessage('Imagen cargada. Presiona Guardar portada para usarla.');
+  }
+
+  function openNotifications() {
+    const readAt = Date.now();
+    localStorage.setItem('notificationsReadAt', String(readAt));
+    setNotificationsReadAt(readAt);
+    setNotificationsOpen((open) => !open);
+    setProfileOpen(false);
   }
 
   async function saveTrackDetails(event) {
@@ -1647,12 +1693,37 @@ export function App() {
             <input ref={searchInputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar anime, metal, rock, k-pop o pop" />
           </label>
           <div className="toolbar" ref={menuRef}>
-            <button className="icon-button" title="Notificaciones"><Bell size={19} /></button>
+            <button className="icon-button notification-button" type="button" title="Notificaciones" onClick={openNotifications}>
+              <Bell size={19} />
+              {unreadNotifications > 0 && <span>{unreadNotifications}</span>}
+            </button>
             <button className="profile-button" onClick={() => setProfileOpen((open) => !open)}>
               <img src={avatar} alt={displayName} />
               <strong>{displayName}</strong>
               <ChevronDown size={16} />
             </button>
+            {notificationsOpen && (
+              <section className="notifications-menu">
+                <h2>Notificaciones</h2>
+                {recentNotifications.length === 0 && <p>No hay notificaciones nuevas.</p>}
+                {recentNotifications.map((track) => (
+                  <button
+                    key={track.id}
+                    type="button"
+                    onClick={() => {
+                      selectTrack(track);
+                      setNotificationsOpen(false);
+                    }}
+                  >
+                    <img src={track.cover_url || getDisplayChannelByGenre(track.genre).image} alt={track.title} />
+                    <span>
+                      <strong>Nueva cancion subida</strong>
+                      <small>{track.title} - {track.artist}</small>
+                    </span>
+                  </button>
+                ))}
+              </section>
+            )}
             {profileOpen && (
               <section className="gmail-menu">
                 <button className="close-profile" type="button" onClick={() => setProfileOpen(false)}><X size={18} /></button>
@@ -1879,6 +1950,14 @@ export function App() {
                               onChange={(event) => setCategoryCoverForms((current) => ({ ...current, [channel.id]: event.target.value }))}
                               placeholder="URL de portada"
                             />
+                            <label className="admin-cover-upload">
+                              Subir imagen
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(event) => uploadCategoryCoverImage(channel, event.target.files?.[0])}
+                              />
+                            </label>
                             <button type="button" onClick={() => saveCategoryCover(channel)}>Guardar portada</button>
                           </div>
                         )}

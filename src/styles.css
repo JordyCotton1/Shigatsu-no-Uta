@@ -560,6 +560,99 @@ select:focus { border-color: var(--green); }
 .profile-button img { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; }
 .profile-button strong { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+.notification-button {
+  position: relative;
+}
+
+.notification-button span {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #ff4fa3;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.notifications-menu {
+  position: absolute;
+  top: 58px;
+  right: 72px;
+  width: min(360px, calc(100vw - 24px));
+  max-height: min(460px, calc(100vh - 92px));
+  overflow-y: auto;
+  border: 1px solid rgba(255, 143, 189, 0.24);
+  border-radius: 8px;
+  background: #111819;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.54);
+  padding: 12px;
+  z-index: 22;
+  scrollbar-width: thin;
+  scrollbar-color: #ff8fbd rgba(255, 255, 255, 0.06);
+}
+
+.notifications-menu::-webkit-scrollbar {
+  width: 8px;
+}
+
+.notifications-menu::-webkit-scrollbar-thumb {
+  background: #ff8fbd;
+  border-radius: 999px;
+}
+
+.notifications-menu h2 {
+  font-size: 1rem;
+  margin: 4px 4px 10px;
+}
+
+.notifications-menu p {
+  color: var(--muted);
+  margin: 6px 4px;
+}
+
+.notifications-menu button {
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 64px;
+  padding: 8px;
+  text-align: left;
+}
+
+.notifications-menu button:hover {
+  background: rgba(255, 143, 189, 0.12);
+}
+
+.notifications-menu img {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.notifications-menu strong,
+.notifications-menu small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notifications-menu small {
+  color: var(--muted);
+}
+
 .gmail-menu {
   position: absolute;
   top: 58px;
@@ -2426,6 +2519,21 @@ body {
   background: #ff8fbd;
   color: #16050e;
   font-weight: 900;
+}
+
+.admin-cover-upload {
+  min-height: 36px;
+  border: 1px dashed rgba(255, 143, 189, 0.45);
+  border-radius: 6px;
+  color: #ffb6d4;
+  display: grid;
+  place-items: center;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.admin-cover-upload input {
+  display: none;
 }
 
 .spotify-mix .spotify-dot {
