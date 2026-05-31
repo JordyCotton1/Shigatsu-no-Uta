@@ -174,7 +174,7 @@ export function App() {
   const [metadataResults, setMetadataResults] = useState([]);
   const [currentTrack, setCurrentTrack] = useState(null);
   const [selectedFolderId, setSelectedFolderId] = useState('');
-  const [trackEditForm, setTrackEditForm] = useState({ title: '', artist: '', genre: '', cover_url: '' });
+  const [trackEditForm, setTrackEditForm] = useState({ title: '', artist: '', album: '', genre: '', custom_genre: '', cover_url: '' });
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackQueue, setPlaybackQueue] = useState([]);
   const [queueIndex, setQueueIndex] = useState(0);
@@ -203,6 +203,7 @@ export function App() {
   const audioRef = useRef(null);
   const user = session?.user ?? null;
   const isAdmin = profile?.role === 'admin';
+  const avatarPreviewUrl = useMemo(() => avatarFile ? URL.createObjectURL(avatarFile) : '', [avatarFile]);
 
   useEffect(() => {
     let mounted = true;
@@ -422,10 +423,13 @@ export function App() {
     if (!trackInfoOpen) return;
     setSelectedFolderId((current) => current || likesFolder?.id || folders[0]?.id || '');
     if (currentTrack) {
+      const matchedChannel = channels.find((channel) => channel.id === currentTrack.genre);
       setTrackEditForm({
         title: currentTrack.title || '',
         artist: currentTrack.artist || '',
-        genre: currentTrack.genre || '',
+        album: currentTrack.album || '',
+        genre: matchedChannel ? matchedChannel.id : 'otros',
+        custom_genre: matchedChannel ? '' : currentTrack.genre || '',
         cover_url: currentTrack.cover_url || ''
       });
     }
@@ -437,6 +441,12 @@ export function App() {
     audioRef.current.muted = muted;
     audioRef.current.loop = repeatOn;
   }, [volume, muted, repeatOn, currentTrack?.audio_url]);
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
+    };
+  }, [avatarPreviewUrl]);
 
   async function loadTracks() {
     // Cargo las canciones subidas por los usuarios para mostrarlas en biblioteca y busqueda.
@@ -862,7 +872,10 @@ export function App() {
     const updates = {
       title: trackEditForm.title.trim() || currentTrack.title,
       artist: trackEditForm.artist.trim() || currentTrack.artist,
-      genre: trackEditForm.genre.trim() || currentTrack.genre,
+      album: trackEditForm.album.trim() || currentTrack.album,
+      genre: trackEditForm.genre === 'otros'
+        ? (trackEditForm.custom_genre.trim() || currentTrack.genre)
+        : trackEditForm.genre,
       cover_url: trackEditForm.cover_url.trim() || null,
       updated_at: new Date().toISOString()
     };
@@ -1495,6 +1508,7 @@ export function App() {
                 </div>
                 {editingProfile && (
                   <form className="profile-editor" onSubmit={saveProfile}>
+                    <img className="profile-avatar-preview" src={avatarPreviewUrl || profileForm.avatar_url || avatar} alt="Vista previa del perfil" />
                     <label>Nombre<input value={profileForm.username} onChange={(event) => setProfileForm({ ...profileForm, username: event.target.value })} /></label>
                     <label>URL avatar<input value={profileForm.avatar_url} onChange={(event) => setProfileForm({ ...profileForm, avatar_url: event.target.value })} /></label>
                     <label className="profile-avatar-picker">
@@ -1535,7 +1549,16 @@ export function App() {
                   <form className="track-edit-form" onSubmit={saveTrackDetails}>
                     <label>Titulo<input value={trackEditForm.title} onChange={(event) => setTrackEditForm({ ...trackEditForm, title: event.target.value })} /></label>
                     <label>Artista<input value={trackEditForm.artist} onChange={(event) => setTrackEditForm({ ...trackEditForm, artist: event.target.value })} /></label>
-                    <label>Genero<input value={trackEditForm.genre} onChange={(event) => setTrackEditForm({ ...trackEditForm, genre: event.target.value })} /></label>
+                    <label>Album<input value={trackEditForm.album} onChange={(event) => setTrackEditForm({ ...trackEditForm, album: event.target.value })} /></label>
+                    <label>
+                      Categoria
+                      <select value={trackEditForm.genre} onChange={(event) => setTrackEditForm({ ...trackEditForm, genre: event.target.value })}>
+                        {channels.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
+                      </select>
+                    </label>
+                    {trackEditForm.genre === 'otros' && (
+                      <label>Genero personalizado<input value={trackEditForm.custom_genre} onChange={(event) => setTrackEditForm({ ...trackEditForm, custom_genre: event.target.value })} /></label>
+                    )}
                     <label>URL portada<input value={trackEditForm.cover_url} onChange={(event) => setTrackEditForm({ ...trackEditForm, cover_url: event.target.value })} /></label>
                     <button className="primary" type="submit">Guardar cambios</button>
                   </form>
