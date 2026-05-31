@@ -3478,25 +3478,28 @@ body {
 @media (max-width: 760px) {
   .player {
     bottom: 78px !important;
-    grid-template-columns: minmax(0, 1fr) 50px !important;
-    height: 68px !important;
-    left: 12px !important;
-    right: 12px !important;
-    padding: 8px 10px !important;
+    grid-template-columns: minmax(0, 1fr) 44px !important;
+    height: 58px !important;
+    left: 22px !important;
+    right: 22px !important;
+    padding: 7px 8px !important;
   }
 
   .player-track {
+    align-items: center !important;
     cursor: pointer !important;
     display: grid !important;
-    grid-template-columns: 46px minmax(0, 1fr) 36px !important;
-    gap: 9px !important;
+    grid-template-columns: 40px minmax(0, 1fr) 30px !important;
+    gap: 8px !important;
     min-width: 0 !important;
   }
 
   .player-track img {
-    border-radius: 7px !important;
-    height: 46px !important;
-    width: 46px !important;
+    border-radius: 6px !important;
+    height: 40px !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    width: 40px !important;
   }
 
   .player-track div {
@@ -3505,12 +3508,12 @@ body {
   }
 
   .player-track strong {
-    font-size: 0.94rem !important;
+    font-size: 0.82rem !important;
     line-height: 1.1 !important;
   }
 
   .player-track span {
-    font-size: 0.78rem !important;
+    font-size: 0.7rem !important;
   }
 
   .player-track .player-heart {
@@ -3518,9 +3521,9 @@ body {
     background: transparent !important;
     color: #ff8fbd !important;
     display: grid !important;
-    height: 36px !important;
+    height: 30px !important;
     justify-self: end !important;
-    width: 36px !important;
+    width: 30px !important;
   }
 
   .player-track .player-heart.active {
@@ -3536,16 +3539,30 @@ body {
     display: contents !important;
   }
 
-  .player-controls .plain-player-button {
+  .player-controls button:not(.player-toggle),
+  .player-controls .plain-player-button,
+  .player-controls .plain-player-button:nth-child(1),
+  .player-controls .plain-player-button:nth-child(2),
+  .player-controls .plain-player-button:nth-child(4),
+  .player-controls .plain-player-button:nth-child(5) {
     display: none !important;
+    height: 0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    width: 0 !important;
   }
 
   .player .player-toggle {
     background: #ff7db6 !important;
     color: #050505 !important;
     display: grid !important;
-    height: 50px !important;
-    width: 50px !important;
+    height: 44px !important;
+    width: 44px !important;
+  }
+
+  .player .player-toggle svg {
+    height: 19px !important;
+    width: 19px !important;
   }
 
   .player-progress,
