@@ -9,6 +9,7 @@ Configura estas variables en Vercel, Netlify, Render u otro hosting:
 ```env
 VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=tu_publishable_key
+VITE_SITE_URL=https://tu-sitio.netlify.app
 ```
 
 ## Importante
@@ -36,6 +37,12 @@ VITE_SUPABASE_PUBLISHABLE_KEY=tu_publishable_key
 ## Configurar Supabase
 
 Ejecuta `docs/supabase-setup.sql` en el SQL Editor de Supabase. Ese archivo no contiene claves secretas; solo crea tablas, policies RLS, bucket de Storage y permisos.
+
+En Supabase, ve a `Authentication` -> `URL Configuration` y configura:
+
+- `Site URL`: `https://tu-sitio.netlify.app`
+- `Redirect URLs`: `https://tu-sitio.netlify.app/**`
+- Para desarrollo local tambien puedes agregar: `http://localhost:5173/**`
 
 Para convertir un usuario en administrador:
 

@@ -40,7 +40,7 @@ import sakuraIcon from '../fondos/icono.png';
 import sakuraLetterImage from '../fondos/letra.png';
 import sakuraSidebarImage from '../fondos/sakura-sidebar-bg.png';
 
-const siteUrl = window.location.origin;
+const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
 
 const fallbackAvatar = 'https://api.dicebear.com/8.x/adventurer/svg?seed=Enrique&backgroundColor=1f2937';
 const brandName = 'Shigatsu no Uta';
