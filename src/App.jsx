@@ -2204,8 +2204,17 @@ export function App() {
             if (event.key === 'Enter' || event.key === ' ') openTrackInfo();
           }}
         >
-          <img src={currentTrack?.cover_url || recommendedTrack.cover} alt={currentTrack?.title || recommendedTrack.title} />
-          <div><strong>{currentTrack?.title || recommendedTrack.title}</strong><span>{currentTrack?.artist || recommendedTrack.artist}</span></div>
+          {currentTrack ? (
+            <>
+              <img src={currentTrack.cover_url || recommendedTrack.cover} alt={currentTrack.title} />
+              <div><strong>{currentTrack.title}</strong><span>{currentTrack.artist}</span></div>
+            </>
+          ) : (
+            <>
+              <span className="player-empty-cover"><Music2 size={22} /></span>
+              <div><strong>Elige una cancion</strong><span>Sin musica en reproduccion</span></div>
+            </>
+          )}
           <button
             className={`plain-player-button player-heart ${currentTrackLiked ? 'active' : ''}`}
             disabled={!currentTrack}

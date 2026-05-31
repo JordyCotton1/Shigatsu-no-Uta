@@ -652,7 +652,7 @@ select:focus { border-color: var(--green); }
 .track-info-modal {
   position: relative;
   width: min(980px, 100%);
-  max-height: min(860px, calc(100vh - 172px));
+  max-height: calc(100vh - 40px);
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #181818;
@@ -661,7 +661,7 @@ select:focus { border-color: var(--green); }
   grid-template-columns: 220px minmax(0, 1fr);
   gap: 22px;
   overflow-y: auto;
-  padding: 22px 22px 54px;
+  padding: 22px 22px 140px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 143, 189, 0.75) rgba(255, 255, 255, 0.06);
 }
@@ -1764,6 +1764,17 @@ select:focus { border-color: var(--green); }
   padding: 22px 36px;
 }
 .player img { width: 88px; height: 88px; object-fit: cover; border-radius: 10px; }
+.player-empty-cover {
+  align-items: center;
+  background: rgba(255, 143, 189, 0.16);
+  border: 1px solid rgba(255, 143, 189, 0.28);
+  border-radius: 10px;
+  color: #ff8fbd;
+  display: flex !important;
+  height: 88px;
+  justify-content: center;
+  width: 88px;
+}
 .player strong, .player span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .player span { color: var(--muted); font-size: .82rem; }
 .player button { width: 42px; height: 42px; border: 0; border-radius: 50%; background: #fff; color: #111; display: grid; place-items: center; }
@@ -2724,11 +2735,11 @@ body {
     align-items: center !important;
   }
 
-  .player-track img {
-    width: 76px !important;
-    height: 76px !important;
-    border-radius: 6px !important;
-  }
+.player-track img {
+  width: 76px !important;
+  height: 76px !important;
+  border-radius: 6px !important;
+}
 
   .player-track strong {
     font-size: 1rem !important;
@@ -3557,10 +3568,10 @@ body {
     display: grid !important;
     gap: 18px !important;
     grid-template-columns: 1fr !important;
-    height: calc(100dvh - 102px) !important;
-    max-height: calc(100dvh - 102px) !important;
+    height: calc(100dvh - 10px) !important;
+    max-height: calc(100dvh - 10px) !important;
     overflow-y: auto !important;
-    padding: 18px 16px 86px !important;
+    padding: 18px 16px 140px !important;
     scrollbar-color: #ff8fbd rgba(255, 255, 255, 0.08) !important;
   }
 
@@ -3712,6 +3723,11 @@ body {
     height: 40px !important;
     object-fit: cover !important;
     object-position: center !important;
+    width: 40px !important;
+  }
+
+  .player-empty-cover {
+    height: 40px !important;
     width: 40px !important;
   }
 
