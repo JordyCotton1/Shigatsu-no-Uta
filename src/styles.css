@@ -493,6 +493,10 @@ select:focus { border-color: var(--green); }
   padding-bottom: 132px;
 }
 
+.app-shell.no-player {
+  padding-bottom: 0 !important;
+}
+
 .sidebar {
   position: sticky;
   top: 0;
@@ -642,7 +646,7 @@ select:focus { border-color: var(--green); }
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: 120;
   display: grid;
   place-items: center;
   padding: 20px;
@@ -1724,6 +1728,16 @@ select:focus { border-color: var(--green); }
 
 .metadata-results button:hover {
   background: rgba(255, 255, 255, 0.08);
+}
+
+.metadata-results button.selected {
+  background: rgba(255, 20, 147, 0.24);
+  border-color: #ff4fa3;
+  box-shadow: 0 0 0 2px rgba(255, 79, 163, 0.42);
+}
+
+.metadata-results button.selected strong {
+  color: #ff8fbd;
 }
 
 .metadata-results img,
@@ -2869,6 +2883,10 @@ body {
     padding-bottom: 170px;
   }
 
+  .app-shell.no-player {
+    padding-bottom: 78px !important;
+  }
+
   .sidebar {
     display: none;
   }
@@ -3224,6 +3242,10 @@ body {
   .app-shell {
     grid-template-columns: 280px minmax(0, 1fr) !important;
     grid-template-rows: minmax(0, 1fr) 96px !important;
+  }
+
+  .app-shell.no-player {
+    grid-template-rows: minmax(0, 1fr) !important;
   }
 
   .sidebar {

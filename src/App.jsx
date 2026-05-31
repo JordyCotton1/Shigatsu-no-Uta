@@ -1514,6 +1514,14 @@ export function App() {
     }));
   }
 
+  function metadataIsSelected(metadata) {
+    return Boolean(
+      metadata?.cover_url &&
+      trackForm.cover_url === metadata.cover_url &&
+      (!metadata.artist || trackForm.artist === metadata.artist)
+    );
+  }
+
   if (loading) {
     return <main className="splash"><Disc3 className="spin" /> Cargando BeatBox...</main>;
   }
@@ -1569,7 +1577,7 @@ export function App() {
   const avatar = getAvatar(user, profile);
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${currentTrack ? 'has-player' : 'no-player'}`}>
       <aside className="sidebar">
         <div className="brand-mark sakura-brand"><img src={sakuraIcon} alt={`${brandJapanese} ${brandName}`} /></div>
         <nav>
@@ -2214,7 +2222,12 @@ export function App() {
                 {metadataResults.length > 0 && (
                   <div className="metadata-results">
                     {metadataResults.map((result) => (
-                      <button type="button" key={`${result.title}-${result.artist}-${result.album}`} onClick={() => applyMetadata(result)}>
+                      <button
+                        className={metadataIsSelected(result) ? 'selected' : ''}
+                        type="button"
+                        key={`${result.title}-${result.artist}-${result.album}`}
+                        onClick={() => applyMetadata(result)}
+                      >
                         <img src={result.cover_url || getChannelByGenre(result.genre).image} alt={result.title} />
                         <span><strong>{result.title}</strong><small>{result.artist} - {result.album || result.custom_genre || result.genre}</small></span>
                       </button>
@@ -2273,6 +2286,7 @@ export function App() {
         </section>
       </section>
 
+      {currentTrack && (
       <footer className="player" style={{ '--accent': activeChannel.accent }}>
         <div
           className="player-track"
@@ -2349,6 +2363,7 @@ export function App() {
           />
         )}
       </footer>
+      )}
       <nav className="mobile-tabbar">
         <button className={activeView === 'home' ? 'active' : ''} type="button" onClick={() => setActiveView('home')}><Home size={24} fill={activeView === 'home' ? 'currentColor' : 'none'} /> Inicio</button>
         <button className={activeView === 'search' ? 'active' : ''} type="button" onClick={focusSearchView}><Search size={24} /> Buscar</button>
