@@ -2326,7 +2326,7 @@ body {
   position: relative;
   z-index: 2;
   width: min(620px, 100%);
-  transform: translateY(24px);
+  transform: translateY(12px);
 }
 
 .hero-letter {
@@ -3005,7 +3005,7 @@ body {
   }
 
   .hero-cta {
-    transform: translateY(18px) !important;
+    transform: translateY(10px) !important;
   }
 
   .play-status,
@@ -3321,7 +3321,7 @@ body {
   }
 
   .hero-cta {
-    transform: translateY(26px) !important;
+    transform: translateY(14px) !important;
   }
 
   .hero-letter {
