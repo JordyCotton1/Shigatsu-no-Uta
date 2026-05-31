@@ -2480,7 +2480,6 @@ export function App() {
                         <img src={track.cover_url || getDisplayChannelByGenre(track.genre).image} alt={track.title} />
                         <button className="row-play" type="button" onClick={() => selectTrack(track)} title="Revisar esta cancion"><Music2 size={16} /></button>
                         <div><strong>{track.title}</strong><span>{track.artist}{track.album ? ` - ${track.album}` : ''}</span></div>
-                        <span>Pendiente</span>
                         <div className="approval-actions">
                           <button className="approve-button" type="button" onClick={() => approveTrack(track)}>Aprobar</button>
                           <button className="reject-button" type="button" onClick={() => rejectTrack(track)}>Rechazar</button>

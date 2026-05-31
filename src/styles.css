@@ -2944,7 +2944,7 @@ body {
 }
 
 .pending-track-row {
-  grid-template-columns: 64px 44px minmax(0, 1fr) minmax(80px, 110px) minmax(176px, auto);
+  grid-template-columns: 64px 44px minmax(0, 1fr) minmax(176px, auto);
   gap: 10px;
 }
 
