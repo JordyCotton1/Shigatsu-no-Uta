@@ -9,7 +9,6 @@
   --muted: #b3b3b3;
   --text: #ffffff;
   --green: #1ed760;
-  --desktop-scale: 0.8;
 }
 
 @media (max-width: 900px) {
@@ -402,20 +401,6 @@ body {
   color: var(--text);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 18px;
-}
-
-@media (min-width: 1101px) {
-  html,
-  body {
-    overflow: hidden;
-  }
-
-  #root {
-    width: calc(100vw / var(--desktop-scale));
-    height: calc(100vh / var(--desktop-scale));
-    transform: scale(var(--desktop-scale));
-    transform-origin: top left;
-  }
 }
 
 button, input, select { font: inherit; }
@@ -2490,7 +2475,7 @@ body {
   .app-shell {
     grid-template-columns: 300px minmax(0, 1fr) !important;
     grid-template-rows: minmax(0, 1fr) 112px !important;
-    height: calc(100vh / var(--desktop-scale)) !important;
+    height: 100vh !important;
     min-height: 0 !important;
     overflow: hidden !important;
     padding-bottom: 0 !important;
