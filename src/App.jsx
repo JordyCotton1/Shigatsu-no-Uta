@@ -177,6 +177,7 @@ export function App() {
   const [activeFolderId, setActiveFolderId] = useState('likes-preview');
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [trackForm, setTrackForm] = useState(emptyTrackForm);
+  const [selectedMetadataKey, setSelectedMetadataKey] = useState('');
   const [uploadingTrack, setUploadingTrack] = useState(false);
   const [searchingMetadata, setSearchingMetadata] = useState(false);
   const [metadataResults, setMetadataResults] = useState([]);
@@ -914,6 +915,7 @@ export function App() {
 
     setTrackForm(emptyTrackForm);
     setMetadataResults([]);
+    setSelectedMetadataKey('');
     let reviewMessage = 'Cancion subida correctamente.';
 
     if (!isAdmin) {
@@ -1521,6 +1523,7 @@ export function App() {
   }
 
   function applyMetadata(metadata) {
+    setSelectedMetadataKey(`${metadata.title || ''}-${metadata.artist || ''}-${metadata.album || ''}`);
     setTrackForm((current) => ({
       ...current,
       artist: metadata.artist || current.artist,
@@ -1533,11 +1536,7 @@ export function App() {
   }
 
   function metadataIsSelected(metadata) {
-    return Boolean(
-      metadata?.cover_url &&
-      trackForm.cover_url === metadata.cover_url &&
-      (!metadata.artist || trackForm.artist === metadata.artist)
-    );
+    return selectedMetadataKey === `${metadata.title || ''}-${metadata.artist || ''}-${metadata.album || ''}`;
   }
 
   if (loading) {
