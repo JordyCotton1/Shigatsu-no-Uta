@@ -53,6 +53,7 @@ const recommendedTrack = {
   cover: sakuraIcon
 };
 const approvalPrefix = 'approval:';
+let youtubeApiPromise = null;
 
 const channels = [
   {
@@ -188,6 +189,27 @@ function getYoutubeEmbedUrl(url = '') {
     playsinline: '1'
   });
   return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+}
+
+function loadYoutubeIframeApi() {
+  if (window.YT?.Player) return Promise.resolve(window.YT);
+  if (youtubeApiPromise) return youtubeApiPromise;
+
+  youtubeApiPromise = new Promise((resolve) => {
+    const previousReady = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      previousReady?.();
+      resolve(window.YT);
+    };
+
+    if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+      const script = document.createElement('script');
+      script.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(script);
+    }
+  });
+
+  return youtubeApiPromise;
 }
 
 function getTrackApprovalStatus(track) {
@@ -368,6 +390,8 @@ export function App() {
   const searchInputRef = useRef(null);
   const audioRef = useRef(null);
   const youtubeFrameRef = useRef(null);
+  const youtubePlayerRef = useRef(null);
+  const youtubePlayerReadyRef = useRef(false);
   const user = session?.user ?? null;
   const isAdmin = profile?.role === 'admin';
   const avatarPreviewUrl = useMemo(() => avatarFile ? URL.createObjectURL(avatarFile) : '', [avatarFile]);
@@ -803,20 +827,31 @@ export function App() {
     }
   }, [isPlaying, canStream, currentTrack?.audio_url]);
 
-  useEffect(() => {
-    if (!currentTrackIsYoutube || !isPlaying) return;
+  function updateYoutubeProgress() {
+    const player = youtubePlayerRef.current;
+    if (!currentTrackIsYoutube || !youtubePlayerReadyRef.current || !player?.getCurrentTime) return;
 
-    setDuration((currentDuration) => currentDuration || 202);
-    const timer = window.setInterval(() => {
-      setCurrentTime((current) => {
-        const nextTime = Math.min(current + 1, duration || 202);
-        setProgress(((nextTime / (duration || 202)) * 100) || 0);
-        return nextTime;
-      });
-    }, 1000);
+    const playerTime = Number(player.getCurrentTime() || 0);
+    const playerDuration = Number(player.getDuration?.() || 0);
+
+    if (Number.isFinite(playerTime)) {
+      setCurrentTime(playerTime);
+    }
+
+    if (Number.isFinite(playerDuration) && playerDuration > 0) {
+      setDuration(playerDuration);
+      setProgress(Math.min((playerTime / playerDuration) * 100, 100) || 0);
+    }
+  }
+
+  useEffect(() => {
+    if (!currentTrackIsYoutube) return;
+
+    updateYoutubeProgress();
+    const timer = window.setInterval(updateYoutubeProgress, isPlaying ? 500 : 1000);
 
     return () => window.clearInterval(timer);
-  }, [currentTrackIsYoutube, duration, isPlaying, currentTrack?.id]);
+  }, [currentTrackIsYoutube, isPlaying, currentTrack?.audio_url]);
 
   useEffect(() => {
     if (!user?.id || !isPlaying || !currentTrack) return;
@@ -890,10 +925,62 @@ export function App() {
 
   function syncYoutubePlayer() {
     if (!currentTrackIsYoutube) return;
+    const player = youtubePlayerRef.current;
+
+    if (youtubePlayerReadyRef.current && player?.setVolume) {
+      player.setVolume(muted ? 0 : volume);
+      if (muted) {
+        player.mute?.();
+      } else {
+        player.unMute?.();
+      }
+      if (isPlaying) {
+        player.playVideo?.();
+      } else {
+        player.pauseVideo?.();
+      }
+      updateYoutubeProgress();
+      return;
+    }
+
     postYoutubeCommand('setVolume', [muted ? 0 : volume]);
     postYoutubeCommand(muted ? 'mute' : 'unMute');
     postYoutubeCommand(isPlaying ? 'playVideo' : 'pauseVideo');
   }
+
+  useEffect(() => {
+    if (!youtubeEmbedUrl || !youtubeFrameRef.current) return;
+
+    let cancelled = false;
+    youtubePlayerReadyRef.current = false;
+
+    loadYoutubeIframeApi().then(() => {
+      if (cancelled || !youtubeFrameRef.current) return;
+
+      youtubePlayerRef.current = new window.YT.Player(youtubeFrameRef.current, {
+        events: {
+          onReady: () => {
+            youtubePlayerReadyRef.current = true;
+            syncYoutubePlayer();
+            updateYoutubeProgress();
+          },
+          onStateChange: (event) => {
+            updateYoutubeProgress();
+            if (event.data === window.YT.PlayerState.ENDED) {
+              playNextFromQueue();
+            }
+          }
+        }
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      youtubePlayerReadyRef.current = false;
+      youtubePlayerRef.current?.destroy?.();
+      youtubePlayerRef.current = null;
+    };
+  }, [youtubeEmbedUrl]);
 
   useEffect(() => {
     if (!currentTrackIsYoutube) return;
@@ -1718,7 +1805,7 @@ export function App() {
     setActiveChannel(getDisplayChannelByGenre(track.genre));
     setProgress(0);
     setCurrentTime(0);
-    setDuration(isYoutubeUrl(track.audio_url) || track.storage_path?.startsWith('youtube:') ? 202 : 0);
+    setDuration(0);
     recordTrackPlay(track);
     setIsPlaying(true);
   }
@@ -2204,7 +2291,7 @@ export function App() {
                   <div className={`progress ${canPlay ? '' : 'empty'}`}><span style={{ width: `${canPlay ? progress : 0}%` }} /></div>
                   <div className="track-info-times">
                     <span>{formatTime(currentTime)}</span>
-                    <span>{formatTime(duration || (canPlay ? 228 : 0))}</span>
+                    <span>{formatTime(duration)}</span>
                   </div>
                   <div className="track-info-controls">
                     <button type="button" onClick={playPreviousFromQueue} title="Anterior"><SkipBack size={24} fill="currentColor" /></button>
@@ -3072,7 +3159,7 @@ export function App() {
           <div className="player-progress">
             <span>{formatTime(currentTime)}</span>
             <div className={`progress ${canPlay ? '' : 'empty'}`}><span style={{ width: `${canPlay ? progress : 0}%` }} /></div>
-            <span>{formatTime(duration || (canPlay ? 228 : 0))}</span>
+            <span>{formatTime(duration)}</span>
           </div>
         </div>
 
