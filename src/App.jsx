@@ -16,6 +16,7 @@ import {
   Lock,
   LogOut,
   ListMusic,
+  Minus,
   Music2,
   Pause,
   Play,
@@ -176,6 +177,11 @@ function normalizeFolderName(name = '') {
 
 function isLikesFolderName(name = '') {
   return ['me gusta', 'tus me gusta'].includes(normalizeFolderName(name));
+}
+
+function isNetworkFetchError(error) {
+  const message = String(error?.message || error || '').toLowerCase();
+  return message.includes('failed to fetch') || message.includes('network') || message.includes('fetch');
 }
 
 function isYoutubeUrl(url = '') {
@@ -385,7 +391,7 @@ export function App() {
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(() => {
     const savedVolume = Number(localStorage.getItem('shigatsu-volume'));
-    return Number.isFinite(savedVolume) ? Math.min(Math.max(savedVolume, 0), 100) : 100;
+    return Number.isFinite(savedVolume) && savedVolume > 0 ? Math.min(Math.max(savedVolume, 0), 100) : 100;
   });
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -401,6 +407,9 @@ export function App() {
   const [saveNotice, setSaveNotice] = useState('');
   const [offlineTrackIds, setOfflineTrackIds] = useState([]);
   const [offlineAudioUrl, setOfflineAudioUrl] = useState('');
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  const [networkOffline, setNetworkOffline] = useState(false);
+  const appOfflineMode = !isOnline || networkOffline;
   const [tracksReady, setTracksReady] = useState(true);
   const [folderTablesReady, setFolderTablesReady] = useState(true);
   const [categoryCoversReady, setCategoryCoversReady] = useState(true);
@@ -413,6 +422,7 @@ export function App() {
   const youtubePlayerMountRef = useRef(null);
   const youtubePlayerRef = useRef(null);
   const youtubePlayerReadyRef = useRef(false);
+  const youtubePlayerCleanupRef = useRef(null);
   const offlineAudioObjectUrlRef = useRef('');
   const user = session?.user ?? null;
   const isAdmin = profile?.role === 'admin';
@@ -460,6 +470,12 @@ export function App() {
       return;
     }
 
+    try {
+      setOfflineTrackIds(JSON.parse(localStorage.getItem(`offlineTracks:${user.id}`) || '[]'));
+    } catch {
+      setOfflineTrackIds([]);
+    }
+
     loadProfile(user.id);
     loadTracks();
     loadCategoryCovers();
@@ -477,11 +493,6 @@ export function App() {
       setListeningStats({ totalSeconds: 0, byDate: {}, byMonth: {}, byGenre: {}, byArtist: {}, byTrack: {} });
     }
 
-    try {
-      setOfflineTrackIds(JSON.parse(localStorage.getItem(`offlineTracks:${user.id}`) || '[]'));
-    } catch {
-      setOfflineTrackIds([]);
-    }
   }, [user?.id]);
 
   useEffect(() => {
@@ -502,12 +513,35 @@ export function App() {
     return () => document.removeEventListener('pointerdown', closeMenu);
   }, []);
 
+  useEffect(() => {
+    function updateOnlineState() {
+      const online = navigator.onLine;
+      setIsOnline(online);
+      if (online) setNetworkOffline(false);
+    }
+
+    updateOnlineState();
+    window.addEventListener('online', updateOnlineState);
+    window.addEventListener('offline', updateOnlineState);
+    return () => {
+      window.removeEventListener('online', updateOnlineState);
+      window.removeEventListener('offline', updateOnlineState);
+    };
+  }, []);
+
   const publicTracks = useMemo(() => (
     tracks.filter((track) => isAdmin || getTrackApprovalStatus(track) === 'approved')
   ), [isAdmin, tracks]);
+  const playablePublicTracks = useMemo(() => (
+    appOfflineMode
+      ? publicTracks.filter((track) => isTrackPlayableNow(track))
+      : publicTracks
+  ), [appOfflineMode, offlineTrackIds, publicTracks]);
   const ownTracks = useMemo(() => (
-    tracks.filter((track) => track.user_id === user?.id)
-  ), [tracks, user?.id]);
+    tracks
+      .filter((track) => track.user_id === user?.id)
+      .filter((track) => isTrackPlayableNow(track))
+  ), [appOfflineMode, offlineTrackIds, tracks, user?.id]);
   const pendingTracks = useMemo(() => (
     tracks.filter((track) => getTrackApprovalStatus(track) === 'pending')
   ), [tracks]);
@@ -517,19 +551,19 @@ export function App() {
 
   const visibleTracks = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return publicTracks;
+    if (!normalized) return playablePublicTracks;
 
-    return publicTracks.filter((track) =>
+    return playablePublicTracks.filter((track) =>
       [track.title, track.artist, track.genre].join(' ').toLowerCase().includes(normalized)
     );
-  }, [publicTracks, query]);
+  }, [playablePublicTracks, query]);
 
   const customGenreOptions = useMemo(() => {
     const channelIds = new Set(channels.map((channel) => channel.id));
     const channelNames = new Set(channels.map((channel) => channel.name.toLowerCase()));
     const seen = new Set();
 
-    return publicTracks
+    return playablePublicTracks
       .map((track) => track.genre?.trim())
       .filter(Boolean)
       .filter((genre) => !channelIds.has(genre) && !channelNames.has(genre.toLowerCase()))
@@ -540,11 +574,11 @@ export function App() {
         return true;
       })
       .sort((a, b) => a.localeCompare(b));
-  }, [publicTracks]);
+  }, [playablePublicTracks]);
 
   const customGenreChannels = useMemo(() => (
     customGenreOptions.map((genre, index) => {
-      const genreTracks = publicTracks.filter((track) => normalizeFolderName(track.genre) === normalizeFolderName(genre));
+      const genreTracks = playablePublicTracks.filter((track) => normalizeFolderName(track.genre) === normalizeFolderName(genre));
       const accent = channels[index % channels.length]?.accent || '#ff8fbd';
       const id = `custom-${normalizeFolderName(genre).replace(/[^a-z0-9]+/g, '-')}`;
 
@@ -558,7 +592,7 @@ export function App() {
         tracks: genreTracks.map((track) => track.title)
       };
     })
-  ), [categoryCovers, customGenreOptions, publicTracks]);
+  ), [categoryCovers, customGenreOptions, playablePublicTracks]);
 
   const mixChannels = useMemo(() => {
     const defaultChannels = channels.map((channel) => ({
@@ -582,17 +616,24 @@ export function App() {
   }, [categoryCovers, customGenreChannels]);
 
   const visibleChannels = useMemo(() => {
+    const sourceChannels = query.trim() ? allCategoryChannels : mixChannels;
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return mixChannels;
-    return allCategoryChannels.filter((channel) =>
-      [channel.name, channel.mood, ...channel.tracks].join(' ').toLowerCase().includes(normalized)
+    const filteredChannels = normalized
+      ? sourceChannels.filter((channel) =>
+        [channel.name, channel.mood, ...channel.tracks].join(' ').toLowerCase().includes(normalized)
+      )
+      : sourceChannels;
+
+    if (!appOfflineMode) return filteredChannels;
+    return filteredChannels.filter((channel) =>
+      playablePublicTracks.some((track) => trackMatchesChannel(track, channel))
     );
-  }, [allCategoryChannels, query, mixChannels]);
+  }, [allCategoryChannels, appOfflineMode, playablePublicTracks, query, mixChannels]);
 
   const featuredArtists = useMemo(() => {
     const artists = new Map();
 
-    for (const track of publicTracks) {
+    for (const track of playablePublicTracks) {
       const artistName = track.artist?.trim();
       if (!artistName) continue;
 
@@ -618,10 +659,10 @@ export function App() {
     return Array.from(artists.values())
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
       .slice(0, 8);
-  }, [publicTracks]);
+  }, [playablePublicTracks]);
 
   const recommendedTracks = useMemo(() => {
-    const playableTracks = publicTracks.filter((track) => track?.audio_url);
+    const playableTracks = playablePublicTracks.filter((track) => track?.audio_url);
     const normalizeKey = (value = '') => value.trim().toLowerCase();
     const addScore = (scores, key, value) => {
       if (!key) return;
@@ -677,7 +718,7 @@ export function App() {
       )
       .slice(0, 5)
       .map((item) => item.track);
-  }, [folderTracks, folders, playCounts, publicTracks, user?.id]);
+  }, [folderTracks, folders, playCounts, playablePublicTracks, user?.id]);
 
   const wellnessStats = useMemo(() => {
     const todayKey = getDateKey();
@@ -698,7 +739,7 @@ export function App() {
     }
     const topFromMap = (map = {}) => Object.entries(map).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Aun sin datos';
     const topTrackId = topFromMap(listeningStats.byTrack);
-    const topTrack = publicTracks.find((track) => track.id === topTrackId);
+    const topTrack = playablePublicTracks.find((track) => track.id === topTrackId);
     const favoriteGenre = topFromMap(listeningStats.byGenre);
     const recommendedVolume = todaySeconds > 7200 ? 60 : 65;
     const volumeScore = Math.max(0, 100 - Math.max(0, volume - 75) * 3);
@@ -719,18 +760,18 @@ export function App() {
       favoriteArtist: topFromMap(listeningStats.byArtist),
       favoriteGenre,
       favoriteTrack: topTrack?.title || 'Aun sin datos',
-      songOfDay: recommendedTracks[0] || currentTrack || publicTracks[0],
+      songOfDay: recommendedTracks[0] || currentTrack || playablePublicTracks[0],
       mood: favoriteGenre.toLowerCase().includes('rock') || favoriteGenre.toLowerCase().includes('metal') ? 'Energia alta' : currentHour >= 22 ? 'Relajado' : 'Alegre',
       lateNight: currentHour >= 22 || currentHour < 5,
       needsBreak: todaySeconds >= 7200,
       volumeWarning: volume >= 85
     };
-  }, [currentTrack, listeningStats, publicTracks, recommendedTracks, volume]);
+  }, [currentTrack, listeningStats, playablePublicTracks, recommendedTracks, volume]);
   const recentNotifications = useMemo(() => (
-    [...publicTracks]
+    [...playablePublicTracks]
       .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
       .slice(0, 8)
-  ), [publicTracks]);
+  ), [playablePublicTracks]);
   const unreadNotifications = recentNotifications.filter((track) => new Date(track.created_at || 0).getTime() > notificationsReadAt).length;
 
   const currentTrackIsYoutube = Boolean(currentTrack && (isYoutubeUrl(currentTrack.audio_url) || currentTrack.storage_path?.startsWith('youtube:')));
@@ -738,6 +779,20 @@ export function App() {
   const canPlay = Boolean(currentTrack?.audio_url);
   const currentTrackOffline = Boolean(currentTrack?.id && offlineTrackIds.includes(currentTrack.id));
   const youtubeEmbedUrl = currentTrackIsYoutube ? getYoutubeEmbedUrl(currentTrack.audio_url) : '';
+
+  useEffect(() => {
+    if (!appOfflineMode || !currentTrack || isTrackPlayableNow(currentTrack)) return;
+
+    const fallbackTrack = playablePublicTracks.find((track) => isTrackPlayableNow(track));
+    setIsPlaying(false);
+    setPlaybackQueue(fallbackTrack ? [fallbackTrack] : []);
+    setQueueIndex(0);
+    setCurrentTrack(fallbackTrack || null);
+    setProgress(0);
+    setCurrentTime(0);
+    setDuration(0);
+  }, [appOfflineMode, currentTrack?.id, offlineTrackIds, playablePublicTracks]);
+
   const uploadGenreChoices = useMemo(() => ([
     ...channels.map((channel) => ({ value: channel.id, label: channel.name })),
     ...customGenreOptions.map((genre) => ({ value: genre, label: genre, custom: true }))
@@ -796,7 +851,7 @@ export function App() {
       const seenTracks = new Set();
 
       for (const item of folderTracks) {
-        if (!likesFolderIds.has(item.folder_id) || !canCurrentUserSeeTrack(item.tracks) || seenTracks.has(item.track_id)) continue;
+        if (!likesFolderIds.has(item.folder_id) || !canCurrentUserSeeTrack(item.tracks) || !isTrackPlayableNow(item.tracks) || seenTracks.has(item.track_id)) continue;
         seenTracks.add(item.track_id);
         uniqueItems.push(item);
       }
@@ -804,12 +859,12 @@ export function App() {
       return uniqueItems;
     }
 
-    return folderTracks.filter((item) => item.folder_id === activeFolder.id && canCurrentUserSeeTrack(item.tracks));
-  }, [activeFolder, canCurrentUserSeeTrack, folderTracks, likesFolders]);
+    return folderTracks.filter((item) => item.folder_id === activeFolder.id && canCurrentUserSeeTrack(item.tracks) && isTrackPlayableNow(item.tracks));
+  }, [activeFolder, appOfflineMode, canCurrentUserSeeTrack, folderTracks, likesFolders, offlineTrackIds]);
   const openedCatalogTracks = useMemo(() => {
     if (!openedCatalog) return [];
-    return publicTracks.filter((track) => trackMatchesChannel(track, openedCatalog));
-  }, [openedCatalog, publicTracks]);
+    return playablePublicTracks.filter((track) => trackMatchesChannel(track, openedCatalog));
+  }, [openedCatalog, playablePublicTracks]);
 
   function getDisplayChannelByGenre(genre) {
     const customChannel = customGenreChannels.find((channel) => normalizeFolderName(channel.customGenre) === normalizeFolderName(genre));
@@ -839,6 +894,10 @@ export function App() {
       .select('*');
 
     if (error) {
+      if (isNetworkFetchError(error)) {
+        setNetworkOffline(true);
+        return;
+      }
       if (error.code === 'PGRST205' || error.message?.includes('category_covers')) {
         setCategoryCoversReady(false);
         return;
@@ -863,7 +922,7 @@ export function App() {
     } else {
       audio.pause();
     }
-  }, [isPlaying, canStream, currentTrack?.audio_url]);
+  }, [isPlaying, canStream, currentTrack?.audio_url, offlineAudioUrl]);
 
   useEffect(() => {
     let cancelled = false;
@@ -879,18 +938,22 @@ export function App() {
     }
 
     async function resolveAudioUrl() {
-      const shouldUseCache = currentTrackOffline || !navigator.onLine;
+      const shouldUseCache = currentTrackOffline || appOfflineMode || !navigator.onLine;
 
-      if (shouldUseCache && 'caches' in window) {
-        const cache = await caches.open(audioCacheName);
-        const cachedResponse = await cache.match(currentTrack.audio_url);
-        if (cachedResponse) {
-          const blob = await cachedResponse.blob();
-          const objectUrl = URL.createObjectURL(blob);
-          offlineAudioObjectUrlRef.current = objectUrl;
-          if (!cancelled) setOfflineAudioUrl(objectUrl);
-          return;
+      try {
+        if (shouldUseCache && 'caches' in window) {
+          const cache = await caches.open(audioCacheName);
+          const cachedResponse = await cache.match(currentTrack.audio_url);
+          if (cachedResponse) {
+            const blob = await cachedResponse.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            offlineAudioObjectUrlRef.current = objectUrl;
+            if (!cancelled) setOfflineAudioUrl(objectUrl);
+            return;
+          }
         }
+      } catch {
+        if (!cancelled) setMessage('No pude leer la cancion offline. Con internet intentare reproducirla normal.');
       }
 
       if (!cancelled) setOfflineAudioUrl(currentTrack.audio_url);
@@ -901,7 +964,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [canStream, currentTrack?.audio_url, currentTrackOffline]);
+  }, [appOfflineMode, canStream, currentTrack?.audio_url, currentTrackOffline]);
 
   function updateYoutubeProgress() {
     const player = youtubePlayerRef.current;
@@ -990,12 +1053,6 @@ export function App() {
     audioRef.current.loop = repeatOn;
   }, [volume, muted, repeatOn, currentTrack?.audio_url]);
 
-  function postYoutubeCommand(command, args = []) {
-    const iframe = youtubePlayerRef.current?.getIframe?.();
-    if (!iframe?.contentWindow) return;
-    iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: command, args }), 'https://www.youtube.com');
-  }
-
   function syncYoutubePlayer() {
     if (!currentTrackIsYoutube) return;
     const player = youtubePlayerRef.current;
@@ -1015,26 +1072,46 @@ export function App() {
       updateYoutubeProgress();
       return;
     }
-
-    postYoutubeCommand('setVolume', [muted ? 0 : volume]);
-    postYoutubeCommand(muted ? 'mute' : 'unMute');
-    postYoutubeCommand(isPlaying ? 'playVideo' : 'pauseVideo');
   }
 
   useEffect(() => {
     if (!youtubeEmbedUrl || !youtubePlayerMountRef.current) return;
 
     let cancelled = false;
-    youtubePlayerReadyRef.current = false;
+    const mountNode = youtubePlayerMountRef.current;
+    const playerHost = document.createElement('div');
+    playerHost.id = `youtube-player-${getYoutubeVideoId(currentTrack?.audio_url)}-${Date.now()}`;
+
+    const cleanupYoutubePlayer = () => {
+      youtubePlayerReadyRef.current = false;
+      try {
+        youtubePlayerRef.current?.destroy?.();
+      } catch {
+        // YouTube can already have removed its own iframe during quick switches.
+      }
+      youtubePlayerRef.current = null;
+      if (mountNode.isConnected) {
+        try {
+          mountNode.replaceChildren();
+        } catch {
+          // The wrapper can already be gone while React is unmounting the footer.
+        }
+      }
+    };
+
+    youtubePlayerCleanupRef.current?.();
+    youtubePlayerCleanupRef.current = cleanupYoutubePlayer;
+    mountNode.replaceChildren(playerHost);
 
     loadYoutubeIframeApi().then(() => {
-      if (cancelled || !youtubePlayerMountRef.current) return;
+      if (cancelled || !playerHost.isConnected) return;
 
-      youtubePlayerRef.current = new window.YT.Player(youtubePlayerMountRef.current, {
+      youtubePlayerRef.current = new window.YT.Player(playerHost.id, {
         videoId: getYoutubeVideoId(currentTrack?.audio_url),
         playerVars: {
           autoplay: 0,
           controls: 0,
+          enablejsapi: 1,
           modestbranding: 1,
           origin: window.location.origin,
           rel: 0,
@@ -1058,9 +1135,10 @@ export function App() {
 
     return () => {
       cancelled = true;
-      youtubePlayerReadyRef.current = false;
-      youtubePlayerRef.current?.destroy?.();
-      youtubePlayerRef.current = null;
+      if (youtubePlayerCleanupRef.current === cleanupYoutubePlayer) {
+        youtubePlayerCleanupRef.current = null;
+      }
+      cleanupYoutubePlayer();
     };
   }, [youtubeEmbedUrl]);
 
@@ -1088,6 +1166,10 @@ export function App() {
       .order('created_at', { ascending: false });
 
     if (error) {
+      if (isNetworkFetchError(error)) {
+        setNetworkOffline(true);
+      }
+
       try {
         const cachedTracks = JSON.parse(localStorage.getItem(`offlineTrackCatalog:${user?.id}`) || '[]');
         if (cachedTracks.length > 0) {
@@ -1104,7 +1186,7 @@ export function App() {
       setMessage(
         error.code === 'PGRST205' || error.message?.includes("public.tracks")
           ? 'Falta completar la configuracion de Supabase o recargar el schema cache. La tabla public.tracks todavia no existe para la API.'
-          : error.message
+          : (isNetworkFetchError(error) ? 'Sin internet: no hay canciones guardadas en este telefono.' : error.message)
       );
       setTracks([]);
       return;
@@ -1113,6 +1195,7 @@ export function App() {
     setTracksReady(true);
     setTracks(data ?? []);
     if (user?.id) localStorage.setItem(`offlineTrackCatalog:${user.id}`, JSON.stringify(data ?? []));
+    cachePublicAudioTracksForOffline(data ?? []);
   }
 
   async function loadFolders() {
@@ -1126,6 +1209,11 @@ export function App() {
       .order('created_at', { ascending: false });
 
     if (ownError) {
+      if (isNetworkFetchError(ownError)) {
+        setNetworkOffline(true);
+        return;
+      }
+
       if (ownError.code === 'PGRST205' || ownError.message?.includes('playlist_folders')) {
         setFolders([]);
         setFolderTracks([]);
@@ -1144,6 +1232,11 @@ export function App() {
       .eq('shared_with', user.id);
 
     if (sharedError) {
+      if (isNetworkFetchError(sharedError)) {
+        setNetworkOffline(true);
+        return;
+      }
+
       const errorMessage = sharedError.message;
       if (
         sharedError?.code === 'PGRST205' ||
@@ -1187,6 +1280,11 @@ export function App() {
       .order('created_at', { ascending: false });
 
     if (itemsError) {
+      if (isNetworkFetchError(itemsError)) {
+        setNetworkOffline(true);
+        return;
+      }
+
       if (itemsError.code === 'PGRST205' || itemsError.message?.includes('playlist_tracks')) {
         setFolderTracks([]);
         setMessage('Falta completar la configuracion de Supabase para activar canciones en carpetas.');
@@ -1209,6 +1307,11 @@ export function App() {
       .maybeSingle();
 
     if (error) {
+      if (isNetworkFetchError(error)) {
+        setNetworkOffline(true);
+        return;
+      }
+
       setMessage(error.message);
       return;
     }
@@ -1539,6 +1642,11 @@ export function App() {
       .eq('id', track.id);
 
     if (error) {
+      if (isNetworkFetchError(error)) {
+        setNetworkOffline(true);
+        return;
+      }
+
       setMessage(error.message);
       return;
     }
@@ -1868,6 +1976,10 @@ export function App() {
 
   function selectTrack(track) {
     if (!track?.audio_url) return;
+    if (!isTrackPlayableNow(track)) {
+      setMessage('Esta cancion no esta disponible sin internet en este telefono.');
+      return;
+    }
     setPlaybackQueue([]);
     setQueueIndex(0);
     setCurrentTrack(track);
@@ -1891,10 +2003,12 @@ export function App() {
   }
 
   function playTrackQueue(queue, startIndex = 0) {
-    const playableQueue = queue.filter((track) => track?.audio_url);
+    const requestedTrack = queue[startIndex];
+    const playableQueue = queue.filter((track) => isTrackPlayableNow(track));
     if (playableQueue.length === 0) return;
 
-    const safeIndex = Math.min(Math.max(startIndex, 0), playableQueue.length - 1);
+    const requestedIndex = requestedTrack?.id ? playableQueue.findIndex((track) => track.id === requestedTrack.id) : -1;
+    const safeIndex = requestedIndex >= 0 ? requestedIndex : Math.min(Math.max(startIndex, 0), playableQueue.length - 1);
     const track = playableQueue[safeIndex];
     setPlaybackQueue(playableQueue);
     setQueueIndex(safeIndex);
@@ -1914,7 +2028,7 @@ export function App() {
     const uploadedQueue = visibleTracks.filter((track) => track?.audio_url);
     if (uploadedQueue.length > 0) return uploadedQueue;
 
-    return publicTracks.filter((track) => track?.audio_url);
+    return playablePublicTracks.filter((track) => track?.audio_url);
   }
 
   function togglePlayer() {
@@ -1929,6 +2043,9 @@ export function App() {
       return;
     }
 
+    if (!isPlaying && volume <= 0) {
+      setPlayerVolume(85);
+    }
     setIsPlaying((playing) => !playing);
   }
 
@@ -2054,13 +2171,17 @@ export function App() {
   function toggleMute() {
     setMuted((isMuted) => {
       const next = !isMuted;
-      if (audioRef.current) audioRef.current.muted = next;
+      if (!next && volume <= 0) {
+        setPlayerVolume(85);
+      } else if (audioRef.current) {
+        audioRef.current.muted = next;
+      }
       return next;
     });
   }
 
-  function changeVolume(event) {
-    const clamped = Number(event.target.value);
+  function setPlayerVolume(value) {
+    const clamped = Math.min(Math.max(Number(value) || 0, 0), 100);
     setVolume(clamped);
     setMuted(clamped === 0);
     localStorage.setItem('shigatsu-volume', String(clamped));
@@ -2068,14 +2189,32 @@ export function App() {
       audioRef.current.volume = clamped / 100;
       audioRef.current.muted = clamped === 0;
     }
-    if (currentTrackIsYoutube) {
-      postYoutubeCommand('setVolume', [clamped]);
-      postYoutubeCommand(clamped === 0 ? 'mute' : 'unMute');
+    if (currentTrackIsYoutube && youtubePlayerReadyRef.current) {
+      const player = youtubePlayerRef.current;
+      player?.setVolume?.(clamped);
+      if (clamped === 0) {
+        player?.mute?.();
+      } else {
+        player?.unMute?.();
+      }
     }
+  }
+
+  function changeVolume(event) {
+    setPlayerVolume(event.target.value);
+  }
+
+  function stepVolume(delta) {
+    setPlayerVolume((muted ? 0 : volume) + delta);
   }
 
   function isOfflineCapableTrack(track) {
     return Boolean(track?.audio_url && !isYoutubeUrl(track.audio_url) && !track.storage_path?.startsWith('youtube:'));
+  }
+
+  function isTrackPlayableNow(track) {
+    if (!appOfflineMode) return Boolean(track?.audio_url);
+    return Boolean(isOfflineCapableTrack(track) && offlineTrackIds.includes(track.id));
   }
 
   async function cacheTrackForOffline(track, showSuccess = true) {
@@ -2116,8 +2255,21 @@ export function App() {
       }
       return true;
     } catch {
-      setMessage('No se pudo guardar offline. Revisa internet o permisos del archivo.');
+      if (showSuccess) setMessage('No se pudo guardar offline. Revisa internet o permisos del archivo.');
       return false;
+    }
+  }
+
+  async function cachePublicAudioTracksForOffline(trackList) {
+    if (!navigator.onLine || !('caches' in window)) return;
+
+    const publicAudioTracks = trackList.filter((track) => (
+      isOfflineCapableTrack(track) && !offlineTrackIds.includes(track.id)
+    ));
+    if (publicAudioTracks.length === 0) return;
+
+    for (const track of publicAudioTracks.slice(0, 8)) {
+      await cacheTrackForOffline(track, false);
     }
   }
 
@@ -2452,6 +2604,28 @@ export function App() {
                       <Heart size={24} fill={currentTrackLiked ? 'currentColor' : 'none'} />
                     </button>
                   </div>
+                  <div className="track-info-volume">
+                    <button className="volume-step-button" type="button" onClick={() => stepVolume(-10)} title="Bajar volumen">
+                      <Minus size={20} />
+                    </button>
+                    <button className={muted ? 'active' : ''} type="button" onClick={toggleMute} title={muted ? 'Activar volumen' : 'Silenciar'}>
+                      <Volume2 size={20} />
+                    </button>
+                    <input
+                      className="volume-slider"
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={muted ? 0 : volume}
+                      onChange={changeVolume}
+                      title="Subir o bajar volumen"
+                      style={{ '--volume': `${muted ? 0 : volume}%` }}
+                    />
+                    <strong>{muted ? 0 : volume}%</strong>
+                    <button className="volume-step-button" type="button" onClick={() => stepVolume(10)} title="Subir volumen">
+                      <Plus size={20} />
+                    </button>
+                  </div>
                 </section>
                 <span className="eyebrow"><Info size={16} /> Informacion</span>
                 <h2>{currentTrack.title}</h2>
@@ -2593,6 +2767,7 @@ export function App() {
 
         <section className="content-grid">
           {message && <p className="app-message">{message}</p>}
+          {appOfflineMode && <p className="app-message">Sin internet: mostrando solo canciones guardadas en este telefono.</p>}
 
           {(activeView === 'home' || activeView === 'search') && (
             <>
@@ -2612,7 +2787,7 @@ export function App() {
               <div className="playlist-grid">
                 {visibleChannels.map((channel) => (
                   (() => {
-                    const channelTracks = publicTracks.filter((track) => trackMatchesChannel(track, channel));
+                    const channelTracks = playablePublicTracks.filter((track) => trackMatchesChannel(track, channel));
                     const isChannelCurrent = currentTrack && trackMatchesChannel(currentTrack, channel);
                     return (
                       <article
@@ -2707,7 +2882,7 @@ export function App() {
                       <span></span>
                     </div>
                     {openedCatalogTracks.length === 0 && (
-                      <p className="empty-state">Todavia no hay canciones subidas en este catalogo.</p>
+                      <p className="empty-state">{appOfflineMode ? 'No hay canciones guardadas sin internet en este catalogo.' : 'Todavia no hay canciones subidas en este catalogo.'}</p>
                     )}
                     {openedCatalogTracks.map((track, index) => (
                       <div className={`playlist-track ${currentTrack?.id === track.id ? 'playing' : ''}`} key={track.id}>
@@ -2753,7 +2928,7 @@ export function App() {
 
               <div className="section-head recommended-head"><h2><span className="section-flower">✿</span> Canciones recomendadas para ti</h2></div>
               <div className="recommended-list">
-                {recommendedTracks.length === 0 && <p className="empty-state">Sube canciones para crear recomendaciones.</p>}
+                {recommendedTracks.length === 0 && <p className="empty-state">{appOfflineMode ? 'No hay recomendaciones guardadas sin internet en este telefono.' : 'Sube canciones para crear recomendaciones.'}</p>}
                 {recommendedTracks.map((track, index) => (
                   <article
                     className={`recommended-song ${currentTrack?.id === track.id ? 'playing' : ''}`}
@@ -2782,7 +2957,7 @@ export function App() {
 
               <div className="section-head"><h2>Canciones subidas</h2><span>{visibleTracks.length} canciones</span></div>
               <div className="track-list">
-                {visibleTracks.length === 0 && <p className="empty-state">Todavia no hay canciones subidas.</p>}
+                {visibleTracks.length === 0 && <p className="empty-state">{appOfflineMode ? 'No hay canciones guardadas sin internet en este telefono.' : 'Todavia no hay canciones subidas.'}</p>}
                 {visibleTracks.map((track, index) => (
                   <article
                     className={`track-row ${currentTrack?.id === track.id ? 'playing' : ''}`}
@@ -2846,14 +3021,14 @@ export function App() {
                         role="button"
                         tabIndex={0}
                         onClick={() => artist.track && playTrackQueue(
-                          publicTracks.filter((track) => track.artist?.trim().toLowerCase() === artist.name.toLowerCase()),
+                          playablePublicTracks.filter((track) => track.artist?.trim().toLowerCase() === artist.name.toLowerCase()),
                           0
                         )}
                         onKeyDown={(event) => {
                           if ((event.key === 'Enter' || event.key === ' ') && artist.track) {
                             event.preventDefault();
                             playTrackQueue(
-                              publicTracks.filter((track) => track.artist?.trim().toLowerCase() === artist.name.toLowerCase()),
+                              playablePublicTracks.filter((track) => track.artist?.trim().toLowerCase() === artist.name.toLowerCase()),
                               0
                             );
                           }
@@ -2875,7 +3050,7 @@ export function App() {
             <>
               <div className="section-head"><h2>Tu biblioteca</h2><span>{ownTracks.length} tuyas</span></div>
               <div className="track-list">
-                {ownTracks.length === 0 && <p className="empty-state">No has subido canciones todavia.</p>}
+                {ownTracks.length === 0 && <p className="empty-state">{appOfflineMode ? 'No hay canciones tuyas guardadas sin internet en este telefono.' : 'No has subido canciones todavia.'}</p>}
                 {ownTracks.map((track, index, userTracks) => (
                   <article
                     className={`track-row ${currentTrack?.id === track.id ? 'playing' : ''}`}
@@ -3040,7 +3215,7 @@ export function App() {
                     <span></span>
                   </div>
                   {activeFolderItems.length === 0 && (
-                    <p className="empty-state">{folderTablesReady ? 'Guarda canciones con el corazon para verlas aqui.' : 'Completa la configuracion de Supabase para activar esta playlist.'}</p>
+                    <p className="empty-state">{folderTablesReady ? (appOfflineMode ? 'No hay canciones guardadas sin internet en esta carpeta.' : 'Guarda canciones con el corazon para verlas aqui.') : 'Completa la configuracion de Supabase para activar esta playlist.'}</p>
                   )}
                   {activeFolderItems.map((item, index) => {
                     const track = item.tracks;
@@ -3339,6 +3514,28 @@ export function App() {
           />
           <button className="plain-player-button" type="button" onClick={() => setProfileOpen((open) => !open)} title="Ajustes"><Settings size={18} /></button>
         </div>
+        <div className="mobile-volume-panel" aria-label="Control de volumen">
+          <button className="mobile-volume-step" type="button" onClick={() => stepVolume(-10)} title="Bajar volumen">
+            <Minus size={24} />
+          </button>
+          <button className={`mobile-volume-mute ${muted ? 'active' : ''}`} type="button" onClick={toggleMute} title={muted ? 'Activar volumen' : 'Silenciar'}>
+            <Volume2 size={26} />
+          </button>
+          <input
+            className="volume-slider mobile-volume-slider"
+            type="range"
+            min="0"
+            max="100"
+            value={muted ? 0 : volume}
+            onChange={changeVolume}
+            title="Subir o bajar volumen"
+            style={{ '--volume': `${muted ? 0 : volume}%` }}
+          />
+          <strong>{muted ? 0 : volume}%</strong>
+          <button className="mobile-volume-step" type="button" onClick={() => stepVolume(10)} title="Subir volumen">
+            <Plus size={24} />
+          </button>
+        </div>
         {canStream && (
           <audio
             ref={audioRef}
@@ -3347,6 +3544,10 @@ export function App() {
             onTimeUpdate={updateAudioProgress}
             onLoadedMetadata={updateAudioProgress}
             onEnded={playNextFromQueue}
+            onError={() => {
+              setIsPlaying(false);
+              setMessage(navigator.onLine ? 'No pude reproducir este archivo de audio.' : 'Esta cancion no esta guardada sin internet en este telefono.');
+            }}
           />
         )}
         {youtubeEmbedUrl && (

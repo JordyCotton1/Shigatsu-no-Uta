@@ -885,6 +885,40 @@ select:focus { border-color: var(--green); }
   width: 68px;
 }
 
+.track-info-volume {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 44px 44px minmax(120px, 1fr) 52px 44px;
+  margin: 12px 0 16px;
+}
+
+.track-info-volume button {
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  display: grid;
+  height: 44px;
+  place-items: center;
+  width: 44px;
+}
+
+.track-info-volume button.active {
+  color: #ff8fbd;
+}
+
+.track-info-volume .volume-slider {
+  height: 9px;
+  width: 100%;
+}
+
+.track-info-volume strong {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.9rem;
+  text-align: right;
+}
+
 .track-edit-form {
   display: grid;
   gap: 10px;
@@ -3059,6 +3093,10 @@ body {
   color: #f5d8e4;
 }
 
+.mobile-volume-panel {
+  display: none;
+}
+
 .volume-line {
   border: 0;
   background: rgba(255, 255, 255, 0.2);
@@ -4254,6 +4292,27 @@ body {
     width: 76px;
   }
 
+  .track-info-volume {
+    grid-template-columns: 46px 46px minmax(96px, 1fr) 48px 46px !important;
+    gap: 8px !important;
+    margin: 8px 0 18px !important;
+  }
+
+  .track-info-volume button {
+    height: 46px !important;
+    width: 46px !important;
+  }
+
+  .track-info-volume .volume-slider {
+    display: block !important;
+    height: 10px !important;
+    min-width: 0 !important;
+  }
+
+  .track-info-volume strong {
+    font-size: 0.92rem !important;
+  }
+
   .track-info-modal > div > .eyebrow {
     border-top: 1px solid rgba(255, 255, 255, 0.16);
     margin-top: 12px;
@@ -4293,10 +4352,11 @@ body {
   .player {
     bottom: 78px !important;
     grid-template-columns: minmax(0, 1fr) 44px !important;
-    height: 58px !important;
+    grid-template-rows: 44px 58px !important;
+    height: 126px !important;
     left: 22px !important;
     right: 22px !important;
-    padding: 7px 8px !important;
+    padding: 7px 8px 12px !important;
   }
 
   .player-track {
@@ -4387,6 +4447,52 @@ body {
   .player-progress,
   .player-extra {
     display: none !important;
+  }
+
+  .mobile-volume-panel {
+    align-items: center !important;
+    display: grid !important;
+    gap: 10px !important;
+    grid-column: 1 / -1 !important;
+    grid-template-columns: 46px 46px minmax(86px, 1fr) 52px 46px !important;
+    min-width: 0 !important;
+  }
+
+  .mobile-volume-panel button {
+    align-items: center !important;
+    background: rgba(255, 255, 255, 0.09) !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    color: #fff !important;
+    display: grid !important;
+    height: 46px !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    width: 46px !important;
+  }
+
+  .mobile-volume-panel button.active {
+    color: #ff8fbd !important;
+  }
+
+  .mobile-volume-panel .mobile-volume-slider {
+    display: block !important;
+    height: 9px !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .mobile-volume-panel strong {
+    color: #fff !important;
+    display: block !important;
+    font-size: 0.94rem !important;
+    font-weight: 900 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+  }
+
+  .app-shell.has-player {
+    padding-bottom: 218px !important;
   }
 
   .mobile-tabbar {
