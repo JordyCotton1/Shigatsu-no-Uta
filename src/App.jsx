@@ -43,6 +43,7 @@ import googleLogo from '../fondos/Logo_google.jpg';
 import appIcon from '../fondos/aplicacion.png';
 import animeCategoryCover from '../categoria/Anime Hits.png';
 import cristianaCategoryCover from '../categoria/Cristiana.png';
+import kpopCategoryCover from '../categoria/K-pop Glow.png';
 import metalCategoryCover from '../categoria/Metal core.png';
 import otrosCategoryCover from '../categoria/Otros.png';
 import popCategoryCover from '../categoria/Pop Mundial.png';
@@ -59,7 +60,7 @@ const recommendedTrack = {
 };
 const approvalPrefix = 'approval:';
 let youtubeApiPromise = null;
-const primaryChannelIds = new Set(['anime', 'pop', 'cristiana', 'metal', 'rock', 'otros']);
+const primaryChannelIds = new Set(['anime', 'metal', 'rock', 'kpop', 'pop', 'otros']);
 
 const channels = [
   {
@@ -99,7 +100,7 @@ const channels = [
     name: 'K-Pop Glow',
     mood: 'coreografias brillantes y hooks enormes',
     accent: '#a78bfa',
-    image: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=85',
+    image: kpopCategoryCover,
     tracks: ['Neon Love', 'Seoul Lights', 'Dance Break', 'Pink Signal']
   },
   {
