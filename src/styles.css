@@ -3159,6 +3159,25 @@ body {
   color: #f5d8e4;
 }
 
+.player-extra .volume-slider {
+  background: linear-gradient(90deg, #ff8fbd 0 var(--volume), rgba(255, 255, 255, 0.2) var(--volume) 100%);
+  height: 7px;
+}
+
+.player-extra .volume-slider::-webkit-slider-thumb {
+  background: #fff;
+  box-shadow: 0 0 0 5px rgba(255, 143, 189, 0.18), 0 3px 10px rgba(0, 0, 0, 0.36);
+  height: 17px;
+  width: 17px;
+}
+
+.player-extra .volume-slider::-moz-range-thumb {
+  background: #fff;
+  box-shadow: 0 0 0 5px rgba(255, 143, 189, 0.18), 0 3px 10px rgba(0, 0, 0, 0.36);
+  height: 17px;
+  width: 17px;
+}
+
 .mobile-volume-panel {
   display: none;
 }
