@@ -20,6 +20,7 @@ import {
   Play,
   Plus,
   Repeat2,
+  RefreshCw,
   Search,
   Settings,
   Share2,
@@ -2114,6 +2115,9 @@ export function App() {
             <button className="icon-button notification-button" type="button" title="Notificaciones" onClick={openNotifications}>
               <Bell size={19} />
               {unreadNotifications > 0 && <span>{unreadNotifications}</span>}
+            </button>
+            <button className="icon-button" type="button" title="Actualizar pagina" onClick={() => window.location.reload()}>
+              <RefreshCw size={19} />
             </button>
             <button className="profile-button" onClick={() => setProfileOpen((open) => !open)}>
               <img src={avatar} alt={displayName} />
