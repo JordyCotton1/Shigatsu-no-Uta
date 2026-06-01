@@ -2427,7 +2427,7 @@ export function App() {
   }
 
   if (loading) {
-    return <main className="splash"><Disc3 className="spin" /> Cargando BeatBox...</main>;
+    return <main className="splash"><Disc3 className="spin" /> Cargando {brandName}...</main>;
   }
 
   if (!user) {
@@ -2640,10 +2640,10 @@ export function App() {
                     </button>
                   </div>
                   <div className="track-info-volume">
-                    <button className="volume-step-button" type="button" onClick={() => stepVolume(-10)} title="Bajar volumen">
+                    <button className="volume-step-button" type="button" onClick={() => stepVolume(-10)} title="Bajar volumen" aria-label="Bajar volumen">
                       <Minus size={20} />
                     </button>
-                    <button className={muted ? 'active' : ''} type="button" onClick={toggleMute} title={muted ? 'Activar volumen' : 'Silenciar'}>
+                    <button className={muted ? 'active' : ''} type="button" onClick={toggleMute} title={muted ? 'Activar volumen' : 'Silenciar'} aria-label={muted ? 'Activar volumen' : 'Silenciar'}>
                       <Volume2 size={20} />
                     </button>
                     <input
@@ -2654,10 +2654,11 @@ export function App() {
                       value={muted ? 0 : volume}
                       onChange={changeVolume}
                       title="Subir o bajar volumen"
+                      aria-label="Subir o bajar volumen"
                       style={{ '--volume': `${muted ? 0 : volume}%` }}
                     />
                     <strong>{muted ? 0 : volume}%</strong>
-                    <button className="volume-step-button" type="button" onClick={() => stepVolume(10)} title="Subir volumen">
+                    <button className="volume-step-button" type="button" onClick={() => stepVolume(10)} title="Subir volumen" aria-label="Subir volumen">
                       <Plus size={20} />
                     </button>
                   </div>
@@ -3550,10 +3551,10 @@ export function App() {
           <button className="plain-player-button" type="button" onClick={() => setProfileOpen((open) => !open)} title="Ajustes"><Settings size={18} /></button>
         </div>
         <div className="mobile-volume-panel" aria-label="Control de volumen">
-          <button className="mobile-volume-step" type="button" onClick={() => stepVolume(-10)} title="Bajar volumen">
+          <button className="mobile-volume-step" type="button" onClick={() => stepVolume(-10)} title="Bajar volumen" aria-label="Bajar volumen">
             <Minus size={24} />
           </button>
-          <button className={`mobile-volume-mute ${muted ? 'active' : ''}`} type="button" onClick={toggleMute} title={muted ? 'Activar volumen' : 'Silenciar'}>
+          <button className={`mobile-volume-mute ${muted ? 'active' : ''}`} type="button" onClick={toggleMute} title={muted ? 'Activar volumen' : 'Silenciar'} aria-label={muted ? 'Activar volumen' : 'Silenciar'}>
             <Volume2 size={26} />
           </button>
           <input
@@ -3564,10 +3565,11 @@ export function App() {
             value={muted ? 0 : volume}
             onChange={changeVolume}
             title="Subir o bajar volumen"
+            aria-label="Subir o bajar volumen"
             style={{ '--volume': `${muted ? 0 : volume}%` }}
           />
           <strong>{muted ? 0 : volume}%</strong>
-          <button className="mobile-volume-step" type="button" onClick={() => stepVolume(10)} title="Subir volumen">
+          <button className="mobile-volume-step" type="button" onClick={() => stepVolume(10)} title="Subir volumen" aria-label="Subir volumen">
             <Plus size={24} />
           </button>
         </div>

@@ -4296,6 +4296,7 @@ body {
     grid-template-columns: 46px 46px minmax(96px, 1fr) 48px 46px !important;
     gap: 8px !important;
     margin: 8px 0 18px !important;
+    padding: 10px 0 14px !important;
   }
 
   .track-info-volume button {
