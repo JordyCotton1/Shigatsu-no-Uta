@@ -174,11 +174,11 @@ function getYoutubeVideoId(url = '') {
   return match?.[1] || '';
 }
 
-function getYoutubeEmbedUrl(url = '', playing = false) {
+function getYoutubeEmbedUrl(url = '') {
   const videoId = getYoutubeVideoId(url);
   if (!videoId) return '';
   const params = new URLSearchParams({
-    autoplay: playing ? '1' : '0',
+    autoplay: '0',
     controls: '0',
     enablejsapi: '1',
     modestbranding: '1',
@@ -342,7 +342,10 @@ export function App() {
   const [shuffleOn, setShuffleOn] = useState(false);
   const [repeatOn, setRepeatOn] = useState(false);
   const [muted, setMuted] = useState(false);
-  const [volume, setVolume] = useState(78);
+  const [volume, setVolume] = useState(() => {
+    const savedVolume = Number(localStorage.getItem('shigatsu-volume'));
+    return Number.isFinite(savedVolume) ? Math.min(Math.max(savedVolume, 0), 100) : 78;
+  });
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationsReadAt, setNotificationsReadAt] = useState(() => Number(localStorage.getItem('notificationsReadAt') || 0));
@@ -671,7 +674,7 @@ export function App() {
   const currentTrackIsYoutube = Boolean(currentTrack && (isYoutubeUrl(currentTrack.audio_url) || currentTrack.storage_path?.startsWith('youtube:')));
   const canStream = Boolean(currentTrack?.audio_url && !currentTrackIsYoutube);
   const canPlay = Boolean(currentTrack?.audio_url);
-  const youtubeEmbedUrl = currentTrackIsYoutube ? getYoutubeEmbedUrl(currentTrack.audio_url, isPlaying) : '';
+  const youtubeEmbedUrl = currentTrackIsYoutube ? getYoutubeEmbedUrl(currentTrack.audio_url) : '';
   const uploadGenreChoices = useMemo(() => ([
     ...channels.map((channel) => ({ value: channel.id, label: channel.name })),
     ...customGenreOptions.map((genre) => ({ value: genre, label: genre, custom: true }))
@@ -884,17 +887,22 @@ export function App() {
     }), 'https://www.youtube.com');
   }
 
+  function syncYoutubePlayer() {
+    if (!currentTrackIsYoutube) return;
+    postYoutubeCommand('setVolume', [muted ? 0 : volume]);
+    postYoutubeCommand(muted ? 'mute' : 'unMute');
+    postYoutubeCommand(isPlaying ? 'playVideo' : 'pauseVideo');
+  }
+
   useEffect(() => {
     if (!currentTrackIsYoutube) return;
 
     const timer = window.setTimeout(() => {
-      postYoutubeCommand('setVolume', [muted ? 0 : volume]);
-      postYoutubeCommand(muted ? 'mute' : 'unMute');
-      postYoutubeCommand(isPlaying ? 'playVideo' : 'pauseVideo');
+      syncYoutubePlayer();
     }, 250);
 
     return () => window.clearTimeout(timer);
-  }, [currentTrackIsYoutube, isPlaying, muted, volume, youtubeEmbedUrl]);
+  }, [currentTrackIsYoutube, isPlaying, muted, volume, currentTrack?.audio_url]);
 
   useEffect(() => {
     return () => {
@@ -1870,9 +1878,14 @@ export function App() {
     const clamped = Number(event.target.value);
     setVolume(clamped);
     setMuted(clamped === 0);
+    localStorage.setItem('shigatsu-volume', String(clamped));
     if (audioRef.current) {
       audioRef.current.volume = clamped / 100;
       audioRef.current.muted = clamped === 0;
+    }
+    if (currentTrackIsYoutube) {
+      postYoutubeCommand('setVolume', [clamped]);
+      postYoutubeCommand(clamped === 0 ? 'mute' : 'unMute');
     }
   }
 
@@ -2207,7 +2220,7 @@ export function App() {
                   <div><dt>Album</dt><dd>{currentTrack.album || 'Sin dato'}</dd></div>
                   <div><dt>Genero</dt><dd>{currentTrack.genre || 'Sin dato'}</dd></div>
                   <div><dt>Fuente de datos</dt><dd>{getTrackMetadataSource(currentTrack)}</dd></div>
-                  <div><dt>Estado</dt><dd>{isPlaying ? 'Reproduciendo' : 'En pausa/listo'}</dd></div>
+                  <div><dt>Estado</dt><dd>{isPlaying ? 'Activa' : 'Pausada'}</dd></div>
                 </dl>
                 {isAdmin && (
                   <form className="track-edit-form" onSubmit={saveTrackDetails}>
@@ -2320,7 +2333,7 @@ export function App() {
             <div className="hero-actions">
               <button className={`play-status ${canPlay && isPlaying ? 'playing' : ''}`} type="button" onClick={togglePlayer}>
                 {canPlay && isPlaying ? <Pause size={18} /> : <Play size={18} />}
-                {canPlay ? (isPlaying ? 'Reproduciendo' : 'Listo en el reproductor') : 'Sube o elige una cancion'}
+                {canPlay ? (isPlaying ? 'Pausar' : 'Reproducir') : 'Elige una cancion'}
               </button>
               <button className="follow-button" type="button" onClick={saveCurrentFromHero}><Heart size={19} fill={currentTrackLiked ? 'currentColor' : 'none'} /> Guardar</button>
             </div>
@@ -2333,7 +2346,7 @@ export function App() {
           {(activeView === 'home' || activeView === 'search') && (
             <>
               <div className="section-head">
-                <h2><span className="section-flower">✿</span> Tus mixes mas escuchados</h2>
+                <h2><span className="section-flower">✿</span> Categorias</h2>
                 <button
                   className="show-all-button"
                   type="button"
@@ -2390,9 +2403,6 @@ export function App() {
                             </label>
                             <button type="button" onClick={() => saveCategoryCover(channel)}>Guardar portada</button>
                           </div>
-                        )}
-                        {isChannelCurrent && (
-                          <span className="playing-badge">{isPlaying ? 'Reproduciendo' : 'Listo'}</span>
                         )}
                         <h3>{channel.name} Mix</h3>
                         <p>{channel.mood}</p>
@@ -2546,7 +2556,7 @@ export function App() {
                       <Music2 size={16} />
                     </button>
                     <div><strong>{track.title}</strong><span>{track.artist}{track.album ? ` - ${track.album}` : ''}</span></div>
-                    <span>{currentTrack?.id === track.id ? (isPlaying ? 'Reproduciendo' : 'Listo') : track.genre}</span>
+                    <span>{track.genre}</span>
                     <button
                       className={`like-icon-button ${likedTrackIds.has(track.id) ? 'liked' : ''}`}
                       type="button"
@@ -2639,7 +2649,7 @@ export function App() {
                       <Music2 size={16} />
                     </button>
                     <div><strong>{track.title}</strong><span>{track.artist}{track.album ? ` - ${track.album}` : ''}</span></div>
-                    <span>{getTrackApprovalStatus(track) === 'pending' ? 'Pendiente' : (currentTrack?.id === track.id ? (isPlaying ? 'Reproduciendo' : 'Listo') : track.genre)}</span>
+                    <span>{getTrackApprovalStatus(track) === 'pending' ? 'Pendiente' : track.genre}</span>
                     <button
                       className={`like-icon-button ${likedTrackIds.has(track.id) ? 'liked' : ''}`}
                       type="button"
@@ -3088,13 +3098,16 @@ export function App() {
             onEnded={playNextFromQueue}
           />
         )}
-        {youtubeEmbedUrl && isPlaying && (
+        {youtubeEmbedUrl && (
           <iframe
             ref={youtubeFrameRef}
             className="youtube-audio-frame"
             src={youtubeEmbedUrl}
             title={`YouTube - ${currentTrack.title}`}
             allow="autoplay; encrypted-media"
+            onLoad={() => {
+              window.setTimeout(syncYoutubePlayer, 350);
+            }}
           />
         )}
       </footer>
