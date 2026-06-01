@@ -441,8 +441,20 @@ img { display: block; }
 .auth-hero { max-width: 980px; }
 .brand-mark { display: inline-flex; align-items: center; gap: 12px; font-size: 1.65rem; font-weight: 900; }
 .brand-mark svg { color: var(--green); width: 42px; height: 42px; }
+.creator-credit {
+  display: inline-flex;
+  width: fit-content;
+  border: 1px solid rgba(255, 143, 189, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 143, 189, 0.08);
+  color: #ffd7e8;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  padding: 7px 12px;
+}
 .auth-hero h1 { margin: 36px 0 20px; font-size: clamp(4.8rem, 7.5vw, 9rem); line-height: 0.92; letter-spacing: 0; }
-.auth-hero p { color: #d8d8d8; font-size: 1.45rem; max-width: 760px; line-height: 1.55; }
+.auth-hero p { color: #d8d8d8; font-size: 1.45rem; max-width: 760px; line-height: 1.55; margin-top: 20px; }
 .hero-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; margin-top: 42px; max-width: 920px; }
 .hero-strip img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
 

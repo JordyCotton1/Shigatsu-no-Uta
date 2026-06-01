@@ -54,6 +54,7 @@ import rockCategoryCover from '../categoria/Rock Clasico.png';
 const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
 const fallbackAvatar = 'https://api.dicebear.com/8.x/adventurer/svg?seed=Enrique&backgroundColor=1f2937';
 const brandName = 'Shigatsu no Uta';
+const defaultCreatorName = 'Enrique';
 const brandJapanese = '四月の歌';
 const recommendedTrack = {
   title: 'Lo que merezco',
@@ -358,6 +359,7 @@ function createGeneratedCategoryCover(name = 'Nuevo', index = 0) {
 export function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [creatorName, setCreatorName] = useState(defaultCreatorName);
   const [profileForm, setProfileForm] = useState({ username: '', avatar_url: '' });
   const [authForm, setAuthForm] = useState({ email: '', password: '', username: '' });
   const [authMode, setAuthMode] = useState('login');
@@ -471,7 +473,19 @@ export function App() {
       }
     }
 
+    async function loadAppSettings() {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'creator_name')
+        .maybeSingle();
+
+      if (!mounted || error || !data?.value) return;
+      setCreatorName(data.value);
+    }
+
     loadSession();
+    loadAppSettings();
 
     // Escucho cambios de autenticacion para reaccionar cuando Google o correo inician/cerran sesion.
     const { data } = supabase.auth.onAuthStateChange((_event, currentSession) => {
@@ -2467,6 +2481,7 @@ export function App() {
         <section className="auth-hero">
           <div className="brand-mark sakura-brand"><img src={sakuraIcon} alt={`${brandJapanese} ${brandName}`} /></div>
           <h1>{brandName}</h1>
+          <span className="creator-credit">Creado por {creatorName}</span>
           <p>{brandJapanese} - tu espacio para anime, metal, rock, K-pop y pop con energia de primavera nocturna.</p>
           <div className="hero-strip">
             {channels.map((channel) => <img key={channel.id} src={channel.image} alt={channel.name} />)}
@@ -2515,6 +2530,7 @@ export function App() {
     <main className={`app-shell ${currentTrack ? 'has-player' : 'no-player'}`}>
       <aside className="sidebar">
         <div className="brand-mark sakura-brand"><img src={sakuraIcon} alt={`${brandJapanese} ${brandName}`} /></div>
+        <span className="creator-credit">Creado por {creatorName}</span>
         <nav>
           <button className={activeView === 'home' ? 'nav-active' : ''} onClick={() => setActiveView('home')}><Home size={19} /> Inicio</button>
           <button className={activeView === 'search' ? 'nav-active' : ''} onClick={focusSearchView}><Search size={19} /> Buscar</button>

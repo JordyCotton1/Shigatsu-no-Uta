@@ -70,12 +70,20 @@ create table if not exists public.category_covers (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.app_settings (
+  key text primary key,
+  value text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 alter table public.profiles enable row level security;
 alter table public.tracks enable row level security;
 alter table public.playlist_folders enable row level security;
 alter table public.playlist_tracks enable row level security;
 alter table public.playlist_shares enable row level security;
 alter table public.category_covers enable row level security;
+alter table public.app_settings enable row level security;
 
 create or replace function public.is_admin()
 returns boolean
@@ -274,6 +282,25 @@ to authenticated
 using (public.is_admin())
 with check (public.is_admin());
 
+drop policy if exists "app_settings_select_all" on public.app_settings;
+create policy "app_settings_select_all"
+on public.app_settings for select
+to anon, authenticated
+using (true);
+
+drop policy if exists "app_settings_admin_insert" on public.app_settings;
+create policy "app_settings_admin_insert"
+on public.app_settings for insert
+to authenticated
+with check (public.is_admin());
+
+drop policy if exists "app_settings_admin_update" on public.app_settings;
+create policy "app_settings_admin_update"
+on public.app_settings for update
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
@@ -298,6 +325,16 @@ drop trigger if exists set_category_covers_updated_at on public.category_covers;
 create trigger set_category_covers_updated_at
 before update on public.category_covers
 for each row execute function public.set_updated_at();
+
+drop trigger if exists set_app_settings_updated_at on public.app_settings;
+create trigger set_app_settings_updated_at
+before update on public.app_settings
+for each row execute function public.set_updated_at();
+
+insert into public.app_settings (key, value)
+values ('creator_name', 'Enrique')
+on conflict (key) do update
+set value = excluded.value;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
