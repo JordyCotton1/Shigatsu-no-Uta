@@ -39,9 +39,14 @@ import { supabase } from './lib/supabase';
 import sakuraHeroImage from '../fondos/fondo.png';
 import sakuraIcon from '../fondos/icono.png';
 import sakuraLetterImage from '../fondos/letra.png';
-import sakuraSidebarImage from '../fondos/sakura-sidebar-bg.png';
 import googleLogo from '../fondos/Logo_google.jpg';
 import appIcon from '../fondos/aplicacion.png';
+import animeCategoryCover from '../categoria/Anime Hits.png';
+import cristianaCategoryCover from '../categoria/Cristiana.png';
+import metalCategoryCover from '../categoria/Metal core.png';
+import otrosCategoryCover from '../categoria/Otros.png';
+import popCategoryCover from '../categoria/Pop Mundial.png';
+import rockCategoryCover from '../categoria/Rock Clasico.png';
 
 const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
 const fallbackAvatar = 'https://api.dicebear.com/8.x/adventurer/svg?seed=Enrique&backgroundColor=1f2937';
@@ -54,6 +59,7 @@ const recommendedTrack = {
 };
 const approvalPrefix = 'approval:';
 let youtubeApiPromise = null;
+const primaryChannelIds = new Set(['anime', 'pop', 'cristiana', 'metal', 'rock', 'otros']);
 
 const channels = [
   {
@@ -61,15 +67,23 @@ const channels = [
     name: 'Anime Hits',
     mood: 'openings, endings y energia visual',
     accent: '#4dd7ff',
-    image: sakuraHeroImage,
+    image: animeCategoryCover,
     tracks: ['Blue Bird', 'Gurenge', 'Silhouette', 'Unravel']
+  },
+  {
+    id: 'cristiana',
+    name: 'Cristiana',
+    mood: 'alabanza, adoracion y fe',
+    accent: '#fbbf24',
+    image: cristianaCategoryCover,
+    tracks: ['Alabanza', 'Adoracion', 'Fe', 'Esperanza']
   },
   {
     id: 'metal',
     name: 'Metal Core',
     mood: 'riffs pesados para concentrarte',
     accent: '#f97316',
-    image: sakuraSidebarImage,
+    image: metalCategoryCover,
     tracks: ['Iron Pulse', 'Black Stage', 'Double Kick', 'Night Forge']
   },
   {
@@ -77,7 +91,7 @@ const channels = [
     name: 'Rock Clasico',
     mood: 'guitarras, bateria y carretera',
     accent: '#f43f5e',
-    image: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=900&q=85',
+    image: rockCategoryCover,
     tracks: ['Thunder Road', 'Garage Lights', 'Golden Amp', 'Last Solo']
   },
   {
@@ -93,7 +107,7 @@ const channels = [
     name: 'Pop Mundial',
     mood: 'canciones faciles de cantar',
     accent: '#3dd17a',
-    image: 'https://images.unsplash.com/photo-1492571350019-22de08371fd3?auto=format&fit=crop&w=900&q=85',
+    image: popCategoryCover,
     tracks: ['Summer Radio', 'Heartbeat', 'City Chorus', 'Flashback']
   },
   {
@@ -101,7 +115,7 @@ const channels = [
     name: 'Otros',
     mood: 'cualquier estilo fuera de la lista principal',
     accent: '#f5b82e',
-    image: sakuraIcon,
+    image: otrosCategoryCover,
     tracks: ['Nueva subida', 'Mi biblioteca', 'Demo track', 'BeatBox']
   }
 ];
@@ -129,6 +143,7 @@ const emptyFolderForm = {
 
 const genreAliases = [
   { match: ['anime', 'j-pop', 'jpop', 'soundtrack'], genre: 'anime' },
+  { match: ['cristiana', 'cristiano', 'christian', 'gospel', 'adoracion', 'alabanza'], genre: 'cristiana' },
   { match: ['metal', 'hard rock'], genre: 'metal' },
   { match: ['rock', 'alternative'], genre: 'rock' },
   { match: ['k-pop', 'kpop', 'korean'], genre: 'kpop' },
@@ -367,7 +382,7 @@ export function App() {
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(() => {
     const savedVolume = Number(localStorage.getItem('shigatsu-volume'));
-    return Number.isFinite(savedVolume) ? Math.min(Math.max(savedVolume, 0), 100) : 78;
+    return Number.isFinite(savedVolume) ? Math.min(Math.max(savedVolume, 0), 100) : 100;
   });
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -380,6 +395,7 @@ export function App() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [trackInfoOpen, setTrackInfoOpen] = useState(false);
   const [message, setMessage] = useState('');
+  const [saveNotice, setSaveNotice] = useState('');
   const [tracksReady, setTracksReady] = useState(true);
   const [folderTablesReady, setFolderTablesReady] = useState(true);
   const [categoryCoversReady, setCategoryCoversReady] = useState(true);
@@ -389,7 +405,7 @@ export function App() {
   const menuRef = useRef(null);
   const searchInputRef = useRef(null);
   const audioRef = useRef(null);
-  const youtubeFrameRef = useRef(null);
+  const youtubePlayerMountRef = useRef(null);
   const youtubePlayerRef = useRef(null);
   const youtubePlayerReadyRef = useRef(false);
   const user = session?.user ?? null;
@@ -539,7 +555,7 @@ export function App() {
     }));
     const principalChannels = showAllMixes
       ? defaultChannels.filter((channel) => channel.id !== 'otros')
-      : defaultChannels;
+      : defaultChannels.filter((channel) => primaryChannelIds.has(channel.id));
 
     return showAllMixes ? [...principalChannels, ...customGenreChannels] : principalChannels;
   }, [categoryCovers, customGenreChannels, showAllMixes]);
@@ -915,12 +931,9 @@ export function App() {
   }, [volume, muted, repeatOn, currentTrack?.audio_url]);
 
   function postYoutubeCommand(command, args = []) {
-    if (!youtubeFrameRef.current?.contentWindow) return;
-    youtubeFrameRef.current.contentWindow.postMessage(JSON.stringify({
-      event: 'command',
-      func: command,
-      args
-    }), 'https://www.youtube.com');
+    const iframe = youtubePlayerRef.current?.getIframe?.();
+    if (!iframe?.contentWindow) return;
+    iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: command, args }), 'https://www.youtube.com');
   }
 
   function syncYoutubePlayer() {
@@ -949,15 +962,24 @@ export function App() {
   }
 
   useEffect(() => {
-    if (!youtubeEmbedUrl || !youtubeFrameRef.current) return;
+    if (!youtubeEmbedUrl || !youtubePlayerMountRef.current) return;
 
     let cancelled = false;
     youtubePlayerReadyRef.current = false;
 
     loadYoutubeIframeApi().then(() => {
-      if (cancelled || !youtubeFrameRef.current) return;
+      if (cancelled || !youtubePlayerMountRef.current) return;
 
-      youtubePlayerRef.current = new window.YT.Player(youtubeFrameRef.current, {
+      youtubePlayerRef.current = new window.YT.Player(youtubePlayerMountRef.current, {
+        videoId: getYoutubeVideoId(currentTrack?.audio_url),
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          modestbranding: 1,
+          origin: window.location.origin,
+          rel: 0,
+          playsinline: 1
+        },
         events: {
           onReady: () => {
             youtubePlayerReadyRef.current = true;
@@ -1646,6 +1668,7 @@ export function App() {
     }
 
     setMessage(successMessage);
+    showSaveNotice(successMessage);
     loadFolders();
     return true;
   }
@@ -1712,6 +1735,7 @@ export function App() {
         await removeTrackFromFolder(likesFolderItem.id, track.id);
       }
       setMessage('Cancion quitada de Me gusta.');
+      showSaveNotice('Cancion quitada de Me gusta.');
       loadFolders();
       return;
     }
@@ -1975,6 +1999,11 @@ export function App() {
       postYoutubeCommand('setVolume', [clamped]);
       postYoutubeCommand(clamped === 0 ? 'mute' : 'unMute');
     }
+  }
+
+  function showSaveNotice(text = 'Cancion guardada') {
+    setSaveNotice(text);
+    window.setTimeout(() => setSaveNotice((current) => (current === text ? '' : current)), 2400);
   }
 
   function showPlayerMessage(text) {
@@ -3190,18 +3219,19 @@ export function App() {
           />
         )}
         {youtubeEmbedUrl && (
-          <iframe
-            ref={youtubeFrameRef}
+          <div
+            ref={youtubePlayerMountRef}
             className="youtube-audio-frame"
-            src={youtubeEmbedUrl}
             title={`YouTube - ${currentTrack.title}`}
-            allow="autoplay; encrypted-media"
-            onLoad={() => {
-              window.setTimeout(syncYoutubePlayer, 350);
-            }}
           />
         )}
       </footer>
+      )}
+      {saveNotice && (
+        <div className="save-toast" role="status" aria-live="polite">
+          <Heart size={18} fill="currentColor" />
+          <span>{saveNotice}</span>
+        </div>
       )}
       <nav className="mobile-tabbar">
         <button className={activeView === 'home' ? 'active' : ''} type="button" onClick={() => setActiveView('home')}><Home size={24} fill={activeView === 'home' ? 'currentColor' : 'none'} /> Inicio</button>
