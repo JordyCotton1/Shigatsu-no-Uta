@@ -561,13 +561,22 @@ export function App() {
     return showAllMixes ? [...principalChannels, ...customGenreChannels] : principalChannels;
   }, [categoryCovers, customGenreChannels, showAllMixes]);
 
+  const allCategoryChannels = useMemo(() => {
+    const defaultChannels = channels.map((channel) => ({
+      ...channel,
+      image: categoryCovers[channel.id] || channel.image
+    }));
+
+    return [...defaultChannels, ...customGenreChannels];
+  }, [categoryCovers, customGenreChannels]);
+
   const visibleChannels = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return mixChannels;
-    return mixChannels.filter((channel) =>
+    return allCategoryChannels.filter((channel) =>
       [channel.name, channel.mood, ...channel.tracks].join(' ').toLowerCase().includes(normalized)
     );
-  }, [query, mixChannels]);
+  }, [allCategoryChannels, query, mixChannels]);
 
   const featuredArtists = useMemo(() => {
     const artists = new Map();
