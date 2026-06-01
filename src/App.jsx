@@ -62,6 +62,7 @@ const recommendedTrack = {
 };
 const approvalPrefix = 'approval:';
 const audioCacheName = 'shigatsu-offline-audio-v1';
+const volumeStep = 1;
 let youtubeApiPromise = null;
 const primaryChannelIds = new Set(['anime', 'metal', 'rock', 'kpop', 'pop', 'otros']);
 
@@ -212,7 +213,7 @@ function getYoutubeEmbedUrl(url = '') {
     rel: '0',
     playsinline: '1'
   });
-  return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+  return `https://www.youtube-nocookie.com/embed/${videoId}?${params.toString()}`;
 }
 
 function loadYoutubeIframeApi() {
@@ -1135,6 +1136,7 @@ export function App() {
       if (cancelled || !playerHost.isConnected) return;
 
       youtubePlayerRef.current = new window.YT.Player(playerHost.id, {
+        host: 'https://www.youtube-nocookie.com',
         videoId: getYoutubeVideoId(currentTrack?.audio_url),
         playerVars: {
           autoplay: 0,
@@ -1143,7 +1145,8 @@ export function App() {
           modestbranding: 1,
           origin: window.location.origin,
           rel: 0,
-          playsinline: 1
+          playsinline: 1,
+          widget_referrer: window.location.origin
         },
         events: {
           onReady: () => {
@@ -2219,7 +2222,7 @@ export function App() {
   }
 
   function setPlayerVolume(value) {
-    const clamped = Math.min(Math.max(Number(value) || 0, 0), 100);
+    const clamped = Math.min(Math.max(Math.round(Number(value) || 0), 0), 100);
     setVolume(clamped);
     setMuted(clamped === 0);
     localStorage.setItem('shigatsu-volume', String(clamped));
@@ -2243,7 +2246,35 @@ export function App() {
   }
 
   function stepVolume(delta) {
-    setPlayerVolume((muted ? 0 : volume) + delta);
+    setPlayerVolume((muted ? 0 : volume) + Math.sign(delta) * volumeStep);
+  }
+
+  function handleVolumeKeyDown(event) {
+    const keySteps = {
+      ArrowDown: -volumeStep,
+      ArrowLeft: -volumeStep,
+      PageDown: -volumeStep,
+      ArrowRight: volumeStep,
+      ArrowUp: volumeStep,
+      PageUp: volumeStep
+    };
+
+    if (event.key === 'Home') {
+      event.preventDefault();
+      setPlayerVolume(0);
+      return;
+    }
+
+    if (event.key === 'End') {
+      event.preventDefault();
+      setPlayerVolume(100);
+      return;
+    }
+
+    if (keySteps[event.key]) {
+      event.preventDefault();
+      stepVolume(keySteps[event.key]);
+    }
   }
 
   function isOfflineCapableTrack(track) {
@@ -2640,7 +2671,7 @@ export function App() {
                     </button>
                   </div>
                   <div className="track-info-volume">
-                    <button className="volume-step-button" type="button" onClick={() => stepVolume(-10)} title="Bajar volumen" aria-label="Bajar volumen">
+                    <button className="volume-step-button" type="button" onClick={() => stepVolume(-1)} title="Bajar volumen" aria-label="Bajar volumen">
                       <Minus size={20} />
                     </button>
                     <button className={muted ? 'active' : ''} type="button" onClick={toggleMute} title={muted ? 'Activar volumen' : 'Silenciar'} aria-label={muted ? 'Activar volumen' : 'Silenciar'}>
@@ -2651,14 +2682,16 @@ export function App() {
                       type="range"
                       min="0"
                       max="100"
+                      step="1"
                       value={muted ? 0 : volume}
                       onChange={changeVolume}
+                      onKeyDown={handleVolumeKeyDown}
                       title="Subir o bajar volumen"
                       aria-label="Subir o bajar volumen"
                       style={{ '--volume': `${muted ? 0 : volume}%` }}
                     />
                     <strong>{muted ? 0 : volume}%</strong>
-                    <button className="volume-step-button" type="button" onClick={() => stepVolume(10)} title="Subir volumen" aria-label="Subir volumen">
+                    <button className="volume-step-button" type="button" onClick={() => stepVolume(1)} title="Subir volumen" aria-label="Subir volumen">
                       <Plus size={20} />
                     </button>
                   </div>
@@ -3543,15 +3576,17 @@ export function App() {
             type="range"
             min="0"
             max="100"
+            step="1"
             value={muted ? 0 : volume}
             onChange={changeVolume}
+            onKeyDown={handleVolumeKeyDown}
             title="Subir o bajar volumen"
             style={{ '--volume': `${muted ? 0 : volume}%` }}
           />
           <button className="plain-player-button" type="button" onClick={() => setProfileOpen((open) => !open)} title="Ajustes"><Settings size={18} /></button>
         </div>
         <div className="mobile-volume-panel" aria-label="Control de volumen">
-          <button className="mobile-volume-step" type="button" onClick={() => stepVolume(-10)} title="Bajar volumen" aria-label="Bajar volumen">
+          <button className="mobile-volume-step" type="button" onClick={() => stepVolume(-1)} title="Bajar volumen" aria-label="Bajar volumen">
             <Minus size={24} />
           </button>
           <button className={`mobile-volume-mute ${muted ? 'active' : ''}`} type="button" onClick={toggleMute} title={muted ? 'Activar volumen' : 'Silenciar'} aria-label={muted ? 'Activar volumen' : 'Silenciar'}>
@@ -3562,14 +3597,16 @@ export function App() {
             type="range"
             min="0"
             max="100"
+            step="1"
             value={muted ? 0 : volume}
             onChange={changeVolume}
+            onKeyDown={handleVolumeKeyDown}
             title="Subir o bajar volumen"
             aria-label="Subir o bajar volumen"
             style={{ '--volume': `${muted ? 0 : volume}%` }}
           />
           <strong>{muted ? 0 : volume}%</strong>
-          <button className="mobile-volume-step" type="button" onClick={() => stepVolume(10)} title="Subir volumen" aria-label="Subir volumen">
+          <button className="mobile-volume-step" type="button" onClick={() => stepVolume(1)} title="Subir volumen" aria-label="Subir volumen">
             <Plus size={24} />
           </button>
         </div>

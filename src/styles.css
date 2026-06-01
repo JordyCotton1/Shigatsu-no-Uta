@@ -397,10 +397,13 @@
 body {
   margin: 0;
   min-width: 320px;
+  min-height: 100dvh;
   background: var(--bg);
   color: var(--text);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 18px;
+  overflow-y: auto;
+  scroll-padding-bottom: 180px;
 }
 
 button, input, select { font: inherit; }
@@ -658,14 +661,14 @@ select:focus { border-color: var(--green); }
   top: 58px;
   right: 0;
   width: min(410px, calc(100vw - 24px));
-  max-height: calc(100dvh - 88px);
+  max-height: min(720px, calc(100dvh - 76px));
   border: 1px solid #334445;
   border-radius: 8px;
   background: #111819;
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.54);
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 14px 14px 34px;
+  padding: 14px 14px max(96px, calc(34px + env(safe-area-inset-bottom)));
   z-index: 90;
 }
 .close-profile { position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border: 0; background: transparent; color: #e5e5e5; }
@@ -3225,6 +3228,8 @@ body {
     min-height: 0 !important;
     overflow-y: auto !important;
     overscroll-behavior: contain !important;
+    padding-bottom: 34px !important;
+    scroll-padding-bottom: 160px !important;
   }
 
   .topbar {
@@ -4071,8 +4076,8 @@ body {
 
   .gmail-menu {
     left: auto !important;
-    max-height: calc(100dvh - 70px) !important;
-    padding-bottom: 42px !important;
+    max-height: calc(100dvh - 62px) !important;
+    padding-bottom: max(132px, calc(42px + env(safe-area-inset-bottom))) !important;
     right: 8px !important;
     top: 54px !important;
     width: calc(100vw - 16px) !important;

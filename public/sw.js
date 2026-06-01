@@ -1,4 +1,4 @@
-const appCacheName = 'shigatsu-app-shell-v2';
+const appCacheName = 'shigatsu-app-shell-v3';
 const appShellFiles = [
   '/',
   '/index.html',
