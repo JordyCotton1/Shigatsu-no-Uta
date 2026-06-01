@@ -2303,8 +2303,10 @@ export function App() {
       return;
     }
 
-    if (playbackQueue.length > 0 && queueIndex < playbackQueue.length - 1) {
-      const nextIndex = queueIndex + 1;
+    if (playbackQueue.length > 0) {
+      const currentIndex = playbackQueue.findIndex((track) => track.id === currentTrack?.id);
+      const activeIndex = currentIndex >= 0 ? currentIndex : queueIndex;
+      const nextIndex = activeIndex < playbackQueue.length - 1 ? activeIndex + 1 : 0;
       const nextTrack = playbackQueue[nextIndex];
       setQueueIndex(nextIndex);
       setCurrentTrack(nextTrack);
@@ -2315,12 +2317,7 @@ export function App() {
       return;
     }
 
-    if (repeatOn && playbackQueue.length > 0) {
-      playTrackQueue(playbackQueue, 0);
-      return;
-    }
-
-    const queue = playbackQueue.length > 0 ? playbackQueue : getFallbackQueue();
+    const queue = getFallbackQueue();
     if (queue.length > 0) {
       const currentIndex = queue.findIndex((track) => track.id === currentTrack?.id);
       const nextIndex = currentIndex >= 0 && currentIndex < queue.length - 1 ? currentIndex + 1 : 0;

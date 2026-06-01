@@ -4354,8 +4354,8 @@ body {
     grid-template-columns: minmax(0, 1fr) 44px !important;
     grid-template-rows: 44px 58px !important;
     height: 126px !important;
-    left: 22px !important;
-    right: 22px !important;
+    left: 10px !important;
+    right: 10px !important;
     padding: 7px 8px 12px !important;
   }
 
@@ -4452,9 +4452,9 @@ body {
   .mobile-volume-panel {
     align-items: center !important;
     display: grid !important;
-    gap: 10px !important;
+    gap: 8px !important;
     grid-column: 1 / -1 !important;
-    grid-template-columns: 46px 46px minmax(86px, 1fr) 52px 46px !important;
+    grid-template-columns: 42px 42px minmax(52px, 1fr) 48px 42px !important;
     min-width: 0 !important;
   }
 
@@ -4465,10 +4465,10 @@ body {
     border-radius: 999px !important;
     color: #fff !important;
     display: grid !important;
-    height: 46px !important;
+    height: 42px !important;
     justify-content: center !important;
     padding: 0 !important;
-    width: 46px !important;
+    width: 42px !important;
   }
 
   .mobile-volume-panel button.active {
@@ -4485,7 +4485,7 @@ body {
   .mobile-volume-panel strong {
     color: #fff !important;
     display: block !important;
-    font-size: 0.94rem !important;
+    font-size: 0.88rem !important;
     font-weight: 900 !important;
     text-align: center !important;
     white-space: nowrap !important;

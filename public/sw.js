@@ -6,6 +6,24 @@ const appShellFiles = [
   '/manifest.webmanifest'
 ];
 
+const transparentImageFallback = '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>';
+
+function fallbackResponseFor(request) {
+  if (request.destination === 'image') {
+    return new Response(transparentImageFallback, {
+      headers: {
+        'Content-Type': 'image/svg+xml',
+        'Cache-Control': 'no-store'
+      }
+    });
+  }
+
+  return new Response('', {
+    status: 504,
+    statusText: 'Gateway Timeout'
+  });
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(appCacheName)
@@ -48,7 +66,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(appCacheName).then((cache) => cache.put(request, responseCopy));
         }
         return response;
-      });
+      }).catch(() => fallbackResponseFor(request));
     })
   );
 });
