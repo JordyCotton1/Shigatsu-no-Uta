@@ -430,6 +430,30 @@ export function App() {
   const trackCoverPreviewUrl = useMemo(() => trackForm.cover_file ? URL.createObjectURL(trackForm.cover_file) : '', [trackForm.cover_file]);
 
   useEffect(() => {
+    function isYoutubePostMessageNoise(value) {
+      const text = String(value?.message || value?.reason?.message || value || '');
+      return text.includes("Failed to execute 'postMessage'") && text.includes('target origin');
+    }
+
+    function handleWindowError(event) {
+      if (!isYoutubePostMessageNoise(event)) return;
+      event.preventDefault();
+    }
+
+    function handleUnhandledRejection(event) {
+      if (!isYoutubePostMessageNoise(event)) return;
+      event.preventDefault();
+    }
+
+    window.addEventListener('error', handleWindowError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    return () => {
+      window.removeEventListener('error', handleWindowError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
+
+  useEffect(() => {
     let mounted = true;
     const favicon = document.querySelector("link[rel='icon']");
     if (favicon) favicon.href = appIcon;
@@ -918,7 +942,11 @@ export function App() {
     if (!audio || !canStream) return;
 
     if (isPlaying) {
-      audio.play().catch(() => setIsPlaying(false));
+      audio.play().catch((error) => {
+        const name = String(error?.name || '');
+        if (name === 'AbortError' || name === 'NotAllowedError') return;
+        setIsPlaying(false);
+      });
     } else {
       audio.pause();
     }
@@ -2046,6 +2074,16 @@ export function App() {
     if (!isPlaying && volume <= 0) {
       setPlayerVolume(85);
     }
+
+    if (!isPlaying && canStream && audioRef.current) {
+      audioRef.current.play().catch((error) => {
+        const name = String(error?.name || '');
+        if (name !== 'AbortError' && name !== 'NotAllowedError') {
+          setMessage('No pude reproducir esta cancion. Prueba otra de la lista.');
+        }
+      });
+    }
+
     setIsPlaying((playing) => !playing);
   }
 
@@ -3540,6 +3578,13 @@ export function App() {
             src={offlineAudioUrl || currentTrack.audio_url}
             onTimeUpdate={updateAudioProgress}
             onLoadedMetadata={updateAudioProgress}
+            onCanPlay={() => {
+              if (!isPlaying || !audioRef.current) return;
+              audioRef.current.play().catch((error) => {
+                const name = String(error?.name || '');
+                if (name !== 'AbortError' && name !== 'NotAllowedError') setIsPlaying(false);
+              });
+            }}
             onEnded={playNextFromQueue}
             onError={() => {
               setIsPlaying(false);
