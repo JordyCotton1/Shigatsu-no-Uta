@@ -1,0 +1,19 @@
+{
+  "name": "Shigatsu no Uta",
+  "short_name": "Shigatsu",
+  "description": "Reproductor musical con soporte offline para canciones guardadas.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#09080d",
+  "theme_color": "#09080d",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/aplicacion.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Crown,
   Disc3,
+  Download,
   Edit3,
   Heart,
   Home,
@@ -59,6 +60,7 @@ const recommendedTrack = {
   cover: sakuraIcon
 };
 const approvalPrefix = 'approval:';
+const audioCacheName = 'shigatsu-offline-audio-v1';
 let youtubeApiPromise = null;
 const primaryChannelIds = new Set(['anime', 'metal', 'rock', 'kpop', 'pop', 'otros']);
 
@@ -397,6 +399,8 @@ export function App() {
   const [trackInfoOpen, setTrackInfoOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [saveNotice, setSaveNotice] = useState('');
+  const [offlineTrackIds, setOfflineTrackIds] = useState([]);
+  const [offlineAudioUrl, setOfflineAudioUrl] = useState('');
   const [tracksReady, setTracksReady] = useState(true);
   const [folderTablesReady, setFolderTablesReady] = useState(true);
   const [categoryCoversReady, setCategoryCoversReady] = useState(true);
@@ -409,6 +413,7 @@ export function App() {
   const youtubePlayerMountRef = useRef(null);
   const youtubePlayerRef = useRef(null);
   const youtubePlayerReadyRef = useRef(false);
+  const offlineAudioObjectUrlRef = useRef('');
   const user = session?.user ?? null;
   const isAdmin = profile?.role === 'admin';
   const avatarPreviewUrl = useMemo(() => avatarFile ? URL.createObjectURL(avatarFile) : '', [avatarFile]);
@@ -470,6 +475,12 @@ export function App() {
       setListeningStats(JSON.parse(localStorage.getItem(`listeningStats:${user.id}`) || '{"totalSeconds":0,"byDate":{},"byMonth":{},"byGenre":{},"byArtist":{},"byTrack":{}}'));
     } catch {
       setListeningStats({ totalSeconds: 0, byDate: {}, byMonth: {}, byGenre: {}, byArtist: {}, byTrack: {} });
+    }
+
+    try {
+      setOfflineTrackIds(JSON.parse(localStorage.getItem(`offlineTracks:${user.id}`) || '[]'));
+    } catch {
+      setOfflineTrackIds([]);
     }
   }, [user?.id]);
 
@@ -725,6 +736,7 @@ export function App() {
   const currentTrackIsYoutube = Boolean(currentTrack && (isYoutubeUrl(currentTrack.audio_url) || currentTrack.storage_path?.startsWith('youtube:')));
   const canStream = Boolean(currentTrack?.audio_url && !currentTrackIsYoutube);
   const canPlay = Boolean(currentTrack?.audio_url);
+  const currentTrackOffline = Boolean(currentTrack?.id && offlineTrackIds.includes(currentTrack.id));
   const youtubeEmbedUrl = currentTrackIsYoutube ? getYoutubeEmbedUrl(currentTrack.audio_url) : '';
   const uploadGenreChoices = useMemo(() => ([
     ...channels.map((channel) => ({ value: channel.id, label: channel.name })),
@@ -852,6 +864,44 @@ export function App() {
       audio.pause();
     }
   }, [isPlaying, canStream, currentTrack?.audio_url]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (offlineAudioObjectUrlRef.current) {
+      URL.revokeObjectURL(offlineAudioObjectUrlRef.current);
+      offlineAudioObjectUrlRef.current = '';
+    }
+
+    if (!canStream || !currentTrack?.audio_url) {
+      setOfflineAudioUrl('');
+      return undefined;
+    }
+
+    async function resolveAudioUrl() {
+      const shouldUseCache = currentTrackOffline || !navigator.onLine;
+
+      if (shouldUseCache && 'caches' in window) {
+        const cache = await caches.open(audioCacheName);
+        const cachedResponse = await cache.match(currentTrack.audio_url);
+        if (cachedResponse) {
+          const blob = await cachedResponse.blob();
+          const objectUrl = URL.createObjectURL(blob);
+          offlineAudioObjectUrlRef.current = objectUrl;
+          if (!cancelled) setOfflineAudioUrl(objectUrl);
+          return;
+        }
+      }
+
+      if (!cancelled) setOfflineAudioUrl(currentTrack.audio_url);
+    }
+
+    resolveAudioUrl();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canStream, currentTrack?.audio_url, currentTrackOffline]);
 
   function updateYoutubeProgress() {
     const player = youtubePlayerRef.current;
@@ -1038,6 +1088,18 @@ export function App() {
       .order('created_at', { ascending: false });
 
     if (error) {
+      try {
+        const cachedTracks = JSON.parse(localStorage.getItem(`offlineTrackCatalog:${user?.id}`) || '[]');
+        if (cachedTracks.length > 0) {
+          setTracksReady(true);
+          setTracks(cachedTracks);
+          setMessage('Sin internet: usando canciones guardadas en este telefono.');
+          return;
+        }
+      } catch {
+        // Si el catalogo local esta corrupto, sigo con el error normal.
+      }
+
       setTracksReady(false);
       setMessage(
         error.code === 'PGRST205' || error.message?.includes("public.tracks")
@@ -1050,6 +1112,7 @@ export function App() {
 
     setTracksReady(true);
     setTracks(data ?? []);
+    if (user?.id) localStorage.setItem(`offlineTrackCatalog:${user.id}`, JSON.stringify(data ?? []));
   }
 
   async function loadFolders() {
@@ -2011,6 +2074,53 @@ export function App() {
     }
   }
 
+  function isOfflineCapableTrack(track) {
+    return Boolean(track?.audio_url && !isYoutubeUrl(track.audio_url) && !track.storage_path?.startsWith('youtube:'));
+  }
+
+  async function cacheTrackForOffline(track, showSuccess = true) {
+    if (!track) return false;
+
+    if (!isOfflineCapableTrack(track)) {
+      setMessage('Las canciones de YouTube no se pueden guardar sin internet. Usa canciones subidas como archivo.');
+      return false;
+    }
+
+    if (!('caches' in window)) {
+      setMessage('Este navegador no permite guardar canciones offline.');
+      return false;
+    }
+
+    if (!navigator.onLine) {
+      setMessage('Necesitas internet para guardar esta cancion sin conexion.');
+      return false;
+    }
+
+    try {
+      const response = await fetch(track.audio_url, { mode: 'cors' });
+      if (!response.ok) throw new Error('No se pudo descargar la cancion.');
+
+      const cache = await caches.open(audioCacheName);
+      await cache.put(track.audio_url, response);
+
+      setOfflineTrackIds((current) => {
+        if (current.includes(track.id)) return current;
+        const next = [...current, track.id];
+        if (user?.id) localStorage.setItem(`offlineTracks:${user.id}`, JSON.stringify(next));
+        return next;
+      });
+
+      if (showSuccess) {
+        showSaveNotice('Cancion disponible sin internet.');
+        setMessage('Cancion disponible sin internet en este telefono.');
+      }
+      return true;
+    } catch {
+      setMessage('No se pudo guardar offline. Revisa internet o permisos del archivo.');
+      return false;
+    }
+  }
+
   function showSaveNotice(text = 'Cancion guardada') {
     setSaveNotice(text);
     window.setTimeout(() => setSaveNotice((current) => (current === text ? '' : current)), 2400);
@@ -2385,6 +2495,17 @@ export function App() {
                     <Heart size={18} fill={currentTrackLiked ? 'currentColor' : 'none'} />
                     {currentTrackLiked ? 'En Me gusta' : 'Me gusta'}
                   </button>
+                  {canStream && (
+                    <button
+                      className={`like-button ${currentTrackOffline ? 'liked' : ''}`}
+                      type="button"
+                      onClick={() => cacheTrackForOffline(currentTrack)}
+                      title="Guardar para escuchar sin internet"
+                    >
+                      <Download size={18} />
+                      {currentTrackOffline ? 'Disponible sin internet' : 'Guardar sin internet'}
+                    </button>
+                  )}
                   <label>
                     Agregar carpeta
                     <span className="folder-picker">
@@ -3222,7 +3343,7 @@ export function App() {
           <audio
             ref={audioRef}
             className="audio-player"
-            src={currentTrack.audio_url}
+            src={offlineAudioUrl || currentTrack.audio_url}
             onTimeUpdate={updateAudioProgress}
             onLoadedMetadata={updateAudioProgress}
             onEnded={playNextFromQueue}
