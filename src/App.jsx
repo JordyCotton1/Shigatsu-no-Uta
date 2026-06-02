@@ -3692,7 +3692,7 @@ export function App() {
 
                 <article>
                   <h3>Estado de ánimo Músical</h3>
-                  <p className="wellness-mood">{wellnessStats.lateNight ? 'ðŸŒ™' : 'ðŸŒ¸'} {wellnessStats.mood}</p>
+                  <p className="wellness-mood">{wellnessStats.lateNight ? 'Noche' : 'Primavera'} - {wellnessStats.mood}</p>
                   <p>{wellnessStats.lateNight ? 'Se recomienda Música relajante para proteger tu descanso.' : 'Tu energía Músical esta activa para descubrir nuevos mixes.'}</p>
                 </article>
 
