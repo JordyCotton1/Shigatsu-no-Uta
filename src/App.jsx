@@ -911,6 +911,26 @@ export function App() {
     return folder?.cover_url || items.find((item) => item.tracks?.cover_url)?.tracks.cover_url || '';
   }
 
+  function getFolderCoverUrls(folder, items = getFolderItems(folder)) {
+    const urls = [];
+    const seen = new Set();
+
+    if (folder?.cover_url) {
+      urls.push(folder.cover_url);
+      seen.add(folder.cover_url);
+    }
+
+    for (const item of items) {
+      const coverUrl = item.tracks?.cover_url;
+      if (!coverUrl || seen.has(coverUrl)) continue;
+      seen.add(coverUrl);
+      urls.push(coverUrl);
+      if (urls.length >= 4) break;
+    }
+
+    return urls;
+  }
+
   const libraryFolders = useMemo(() => {
     const hasLikes = folders.some((folder) => isLikesFolderName(folder.name));
     const previewLikes = {
@@ -3524,7 +3544,7 @@ export function App() {
                     const uniqueTrackCount = new Set(items.map((item) => item.track_id)).size;
                     const folderName = isLikesFolder ? 'Tus me gusta' : folder.name;
                     const folderColor = getFolderDisplayColor(folder);
-                    const folderCoverUrl = getFolderCoverUrl(folder, items);
+                    const folderCoverUrls = getFolderCoverUrls(folder, items);
                     return (
                       <button
                         className={activeFolder?.id === folder.id ? 'active' : ''}
@@ -3533,10 +3553,10 @@ export function App() {
                         onClick={() => setActiveFolderId(folder.id)}
                         style={{ '--playlist-color': folderColor }}
                       >
-                        <span className={`playlist-cover ${isLikesFolder ? 'liked' : ''}`}>
-                          {folderCoverUrl ? <img src={folderCoverUrl} alt="" /> : null}
-                          {isLikesFolder && !folderCoverUrl ? <Heart size={30} fill="currentColor" /> : null}
-                          {!isLikesFolder && !folderCoverUrl ? <Music2 size={24} /> : null}
+                        <span className={`playlist-cover ${folderCoverUrls.length > 1 ? 'mosaic' : ''} ${isLikesFolder ? 'liked' : ''}`}>
+                          {folderCoverUrls.length > 0 ? folderCoverUrls.map((coverUrl) => <img src={coverUrl} alt="" key={coverUrl} />) : null}
+                          {isLikesFolder && folderCoverUrls.length === 0 ? <Heart size={30} fill="currentColor" /> : null}
+                          {!isLikesFolder && folderCoverUrls.length === 0 ? <Music2 size={24} /> : null}
                         </span>
                         <span>
                           <strong>{folderName}</strong>
@@ -3597,15 +3617,33 @@ export function App() {
                     const track = item.tracks;
                     const isOwner = activeFolder?.owner_id === user.id;
                     return (
-                      <div className={`playlist-track ${currentTrack?.id === track.id ? 'playing' : ''}`} key={`${activeFolder.id}-${track.id}`}>
+                      <div
+                        className={`playlist-track ${currentTrack?.id === track.id ? 'playing' : ''}`}
+                        key={`${activeFolder.id}-${track.id}`}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => playTrackQueue(activeFolderItems.map((item) => item.tracks), index)}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Enter' && event.key !== ' ') return;
+                          event.preventDefault();
+                          playTrackQueue(activeFolderItems.map((item) => item.tracks), index);
+                        }}
+                      >
                         <span>{currentTrack?.id === track.id ? <Play size={16} fill="currentColor" /> : index + 1}</span>
                         <img src={track.cover_url || activeChannel.image} alt={track.title} />
-                        <button type="button" onClick={() => playTrackQueue(activeFolderItems.map((item) => item.tracks), index)}>
+                        <div className="playlist-track-info">
                           <strong>{track.title}</strong>
                           <small>{track.artist}</small>
-                        </button>
+                        </div>
                         <span>{track.album || 'Single'}</span>
-                        <button className="like-icon-button liked" type="button" onClick={() => removeTrackFromFolder(activeFolder.id, track.id)}>
+                        <button
+                          className="like-icon-button liked"
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            removeTrackFromFolder(activeFolder.id, track.id);
+                          }}
+                        >
                           {(isOwner || item.added_by === user.id) ? <X size={16} /> : <Heart size={16} fill="currentColor" />}
                         </button>
                       </div>
