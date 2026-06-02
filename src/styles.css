@@ -482,7 +482,7 @@ select {
 input:focus,
 select:focus { border-color: var(--green); }
 
-.primary, .google-button, .ghost {
+.primary, .google-button, .ghost, .forgot-button {
   min-height: 58px;
   border: 0;
   border-radius: 999px;
@@ -497,6 +497,21 @@ select:focus { border-color: var(--green); }
 .google-button { width: 100%; background: #ffffff; color: #161616; margin-bottom: 16px; }
 .google-button span { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #4285f4; color: #fff; font-weight: 900; }
 .ghost { width: 100%; margin-top: 12px; background: transparent; color: var(--muted); }
+.forgot-button { width: 100%; min-height: 44px; margin-top: 12px; background: transparent; color: #ff8fbd; }
+.reset-heading {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+.reset-heading h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+.reset-heading p {
+  color: var(--muted);
+  margin: 0;
+}
 .divider { display: flex; align-items: center; gap: 12px; color: var(--muted); margin-bottom: 16px; }
 .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .message { margin: 14px 0 0; color: #ffb4b4; }
@@ -2400,7 +2415,8 @@ select:focus { border-color: var(--green); }
   .auth-card input,
   .auth-card .primary,
   .auth-card .google-button,
-  .auth-card .ghost {
+  .auth-card .ghost,
+  .auth-card .forgot-button {
     min-height: 58px !important;
     font-size: 0.9rem !important;
   }
@@ -4670,5 +4686,55 @@ body {
   .approval-actions button {
     flex: 1;
     min-width: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  html,
+  body,
+  #root {
+    min-height: 100dvh;
+  }
+
+  body {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .auth-page {
+    padding-top: max(22px, calc(16px + env(safe-area-inset-top, 0px))) !important;
+    padding-bottom: max(34px, calc(24px + env(safe-area-inset-bottom, 0px))) !important;
+  }
+
+  .topbar {
+    padding-top: max(14px, calc(10px + env(safe-area-inset-top, 0px))) !important;
+  }
+
+  .main-view {
+    padding-top: env(safe-area-inset-top, 0px) !important;
+  }
+
+  .app-shell {
+    padding-bottom: max(196px, calc(164px + env(safe-area-inset-bottom, 0px))) !important;
+  }
+
+  .app-shell.has-player {
+    padding-bottom: max(272px, calc(228px + env(safe-area-inset-bottom, 0px))) !important;
+  }
+
+  .main-view {
+    scroll-padding-bottom: max(230px, calc(190px + env(safe-area-inset-bottom, 0px))) !important;
+  }
+
+  .mobile-tabbar {
+    height: max(104px, calc(78px + env(safe-area-inset-bottom, 0px))) !important;
+    padding: 7px 4px max(28px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .player {
+    bottom: max(104px, calc(78px + env(safe-area-inset-bottom, 0px))) !important;
+  }
+
+  .save-toast {
+    bottom: max(178px, calc(138px + env(safe-area-inset-bottom, 0px))) !important;
   }
 }

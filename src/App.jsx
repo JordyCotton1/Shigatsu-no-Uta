@@ -52,6 +52,7 @@ import popCategoryCover from '../categoria/Pop Mundial.png';
 import rockCategoryCover from '../categoria/Rock Clasico.png';
 
 const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
+const passwordResetRedirectUrl = siteUrl;
 const fallbackAvatar = 'https://api.dicebear.com/8.x/adventurer/svg?seed=Enrique&backgroundColor=1f2937';
 const brandName = 'Shigatsu no Uta';
 const defaultCreatorName = 'Enrique';
@@ -71,7 +72,7 @@ const channels = [
   {
     id: 'anime',
     name: 'Anime Hits',
-    mood: 'openings, endings y energia visual',
+    mood: 'openings, endings y energía visual',
     accent: '#4dd7ff',
     image: animeCategoryCover,
     tracks: ['Blue Bird', 'Gurenge', 'Silhouette', 'Unravel']
@@ -79,10 +80,10 @@ const channels = [
   {
     id: 'cristiana',
     name: 'Cristiana',
-    mood: 'alabanza, adoracion y fe',
+    mood: 'alabanza, adoración y fe',
     accent: '#fbbf24',
     image: cristianaCategoryCover,
-    tracks: ['Alabanza', 'Adoracion', 'Fe', 'Esperanza']
+    tracks: ['Alabanza', 'adoración', 'Fe', 'Esperanza']
   },
   {
     id: 'metal',
@@ -95,7 +96,7 @@ const channels = [
   {
     id: 'rock',
     name: 'Rock Clasico',
-    mood: 'guitarras, bateria y carretera',
+    mood: 'guitarras, batería y carretera',
     accent: '#f43f5e',
     image: rockCategoryCover,
     tracks: ['Thunder Road', 'Garage Lights', 'Golden Amp', 'Last Solo']
@@ -111,7 +112,7 @@ const channels = [
   {
     id: 'pop',
     name: 'Pop Mundial',
-    mood: 'canciones faciles de cantar',
+    mood: 'canciones fáciles de cantar',
     accent: '#3dd17a',
     image: popCategoryCover,
     tracks: ['Summer Radio', 'Heartbeat', 'City Chorus', 'Flashback']
@@ -149,7 +150,7 @@ const emptyFolderForm = {
 
 const genreAliases = [
   { match: ['anime', 'j-pop', 'jpop', 'soundtrack'], genre: 'anime' },
-  { match: ['cristiana', 'cristiano', 'christian', 'gospel', 'adoracion', 'alabanza'], genre: 'cristiana' },
+  { match: ['cristiana', 'cristiano', 'christian', 'gospel', 'adoración', 'alabanza'], genre: 'cristiana' },
   { match: ['metal', 'hard rock'], genre: 'metal' },
   { match: ['rock', 'alternative'], genre: 'rock' },
   { match: ['k-pop', 'kpop', 'korean'], genre: 'kpop' },
@@ -363,6 +364,7 @@ export function App() {
   const [profileForm, setProfileForm] = useState({ username: '', avatar_url: '' });
   const [authForm, setAuthForm] = useState({ email: '', password: '', username: '' });
   const [authMode, setAuthMode] = useState('login');
+  const [passwordRecoveryMode, setPasswordRecoveryMode] = useState(false);
   const [activeChannel, setActiveChannel] = useState(channels[0]);
   const [openedCatalog, setOpenedCatalog] = useState(null);
   const [showAllMixes, setShowAllMixes] = useState(false);
@@ -427,6 +429,7 @@ export function App() {
   const youtubePlayerReadyRef = useRef(false);
   const youtubePlayerCleanupRef = useRef(null);
   const offlineAudioObjectUrlRef = useRef('');
+  const audioPlayRetryRef = useRef(null);
   const user = session?.user ?? null;
   const isAdmin = profile?.role === 'admin';
   const avatarPreviewUrl = useMemo(() => avatarFile ? URL.createObjectURL(avatarFile) : '', [avatarFile]);
@@ -465,7 +468,7 @@ export function App() {
     document.querySelector("meta[name='twitter:image']")?.setAttribute('content', appIcon);
 
     async function loadSession() {
-      // Reviso si Supabase ya tiene una sesion activa para mantener abierto el login al recargar.
+      // Reviso si Supabase ya tiene una sesión activa para mantener abierto el login al recargar.
       const { data } = await supabase.auth.getSession();
       if (mounted) {
         setSession(data.session);
@@ -487,8 +490,13 @@ export function App() {
     loadSession();
     loadAppSettings();
 
-    // Escucho cambios de autenticacion para reaccionar cuando Google o correo inician/cerran sesion.
-    const { data } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+    // Escucho cambios de autenticacion para reaccionar cuando Google o correo inician/cerran sesión.
+    const { data } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setPasswordRecoveryMode(true);
+        setAuthMode('reset');
+        setMessage('Escribe tu nueva contraseña.');
+      }
       setSession(currentSession);
     });
 
@@ -625,7 +633,7 @@ export function App() {
         id,
         customGenre: genre,
         name: genre,
-        mood: `${genreTracks.length} canciones subidas`,
+        mood: `${genreTracks.length} Canciones subidas`,
         accent,
         image: categoryCovers[id] || createGeneratedCategoryCover(genre, index),
         tracks: genreTracks.map((track) => track.title)
@@ -688,7 +696,7 @@ export function App() {
 
       artists.set(key, {
         name: artistName,
-        genre: channel?.name || track.genre || 'Musica',
+        genre: channel?.name || track.genre || 'Música',
         image: track.cover_url || channel?.image || sakuraIcon,
         track,
         count: 1
@@ -776,7 +784,7 @@ export function App() {
       if ((listeningStats.byDate?.[getDateKey(date)] || 0) <= 0) break;
       streak += 1;
     }
-    const topFromMap = (map = {}) => Object.entries(map).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Aun sin datos';
+    const topFromMap = (map = {}) => Object.entries(map).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Aún sin datos';
     const topTrackId = topFromMap(listeningStats.byTrack);
     const topTrack = playablePublicTracks.find((track) => track.id === topTrackId);
     const favoriteGenre = topFromMap(listeningStats.byGenre);
@@ -798,9 +806,9 @@ export function App() {
       volumeScore: Math.round(volumeScore),
       favoriteArtist: topFromMap(listeningStats.byArtist),
       favoriteGenre,
-      favoriteTrack: topTrack?.title || 'Aun sin datos',
+      favoriteTrack: topTrack?.title || 'Aún sin datos',
       songOfDay: recommendedTracks[0] || currentTrack || playablePublicTracks[0],
-      mood: favoriteGenre.toLowerCase().includes('rock') || favoriteGenre.toLowerCase().includes('metal') ? 'Energia alta' : currentHour >= 22 ? 'Relajado' : 'Alegre',
+      mood: favoriteGenre.toLowerCase().includes('rock') || favoriteGenre.toLowerCase().includes('metal') ? 'energía alta' : currentHour >= 22 ? 'Relajado' : 'Alegre',
       lateNight: currentHour >= 22 || currentHour < 5,
       needsBreak: todaySeconds >= 7200,
       volumeWarning: volume >= 85
@@ -952,16 +960,37 @@ export function App() {
     );
   }
 
+  function playAudioElement(allowRetry = false) {
+    const audio = audioRef.current;
+    if (!audio || !canStream) return;
+
+    if (audioPlayRetryRef.current) {
+      window.clearTimeout(audioPlayRetryRef.current);
+      audioPlayRetryRef.current = null;
+    }
+
+    audio.play().catch((error) => {
+      const name = String(error?.name || '');
+      const canRetry = allowRetry && (name === 'AbortError' || name === 'NotAllowedError' || audio.readyState < HTMLMediaElement.HAVE_FUTURE_DATA);
+      if (canRetry) {
+        audioPlayRetryRef.current = window.setTimeout(() => {
+          audioPlayRetryRef.current = null;
+          if (isPlaying && audioRef.current) playAudioElement(false);
+        }, 650);
+        return;
+      }
+
+      setIsPlaying(false);
+    });
+  }
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !canStream) return;
 
     if (isPlaying) {
-      audio.play().catch((error) => {
-        const name = String(error?.name || '');
-        if (name === 'AbortError' || name === 'NotAllowedError') return;
-        setIsPlaying(false);
-      });
+      audio.load();
+      playAudioElement(true);
     } else {
       audio.pause();
     }
@@ -969,6 +998,7 @@ export function App() {
 
   useEffect(() => {
     let cancelled = false;
+    setOfflineAudioUrl('');
 
     if (offlineAudioObjectUrlRef.current) {
       URL.revokeObjectURL(offlineAudioObjectUrlRef.current);
@@ -996,7 +1026,7 @@ export function App() {
           }
         }
       } catch {
-        if (!cancelled) setMessage('No pude leer la cancion offline. Con internet intentare reproducirla normal.');
+        if (!cancelled) setMessage('No pude leer la canción offline. Con internet intentaré reproducirla normal.');
       }
 
       if (!cancelled) setOfflineAudioUrl(currentTrack.audio_url);
@@ -1008,6 +1038,13 @@ export function App() {
       cancelled = true;
     };
   }, [appOfflineMode, canStream, currentTrack?.audio_url, currentTrackOffline]);
+
+  useEffect(() => () => {
+    if (audioPlayRetryRef.current) {
+      window.clearTimeout(audioPlayRetryRef.current);
+      audioPlayRetryRef.current = null;
+    }
+  }, []);
 
   function updateYoutubeProgress() {
     const player = youtubePlayerRef.current;
@@ -1054,7 +1091,7 @@ export function App() {
           },
           byGenre: {
             ...(current.byGenre || {}),
-            [currentTrack.genre || 'Sin genero']: Number(current.byGenre?.[currentTrack.genre || 'Sin genero'] || 0) + 1
+            [currentTrack.genre || 'Sin género']: Number(current.byGenre?.[currentTrack.genre || 'Sin género'] || 0) + 1
           },
           byArtist: {
             ...(current.byArtist || {}),
@@ -1198,13 +1235,78 @@ export function App() {
   }, [currentTrackIsYoutube, isPlaying, muted, volume, currentTrack?.audio_url]);
 
   useEffect(() => {
+    if (!('mediaSession' in navigator)) return undefined;
+
+    if (!currentTrack) {
+      navigator.mediaSession.playbackState = 'none';
+      return undefined;
+    }
+
+    if (typeof window.MediaMetadata === 'function') {
+      navigator.mediaSession.metadata = new window.MediaMetadata({
+        title: currentTrack.title || brandName,
+        artist: currentTrack.artist || brandName,
+        album: currentTrack.album || currentTrack.genre || '',
+        artwork: [
+          {
+            src: currentTrack.cover_url || getDisplayChannelByGenre(currentTrack.genre).image,
+            sizes: '512x512',
+            type: 'image/png'
+          }
+        ]
+      });
+    }
+
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+
+    const handlers = {
+      play: () => setIsPlaying(true),
+      pause: () => setIsPlaying(false),
+      nexttrack: playNextFromQueue,
+      previoustrack: playPreviousFromQueue
+    };
+
+    for (const [action, handler] of Object.entries(handlers)) {
+      try {
+        navigator.mediaSession.setActionHandler(action, handler);
+      } catch {
+        // Some Android WebViews do not expose every Media Session action.
+      }
+    }
+
+    return () => {
+      for (const action of Object.keys(handlers)) {
+        try {
+          navigator.mediaSession.setActionHandler(action, null);
+        } catch {
+          // Ignore unsupported Media Session actions.
+        }
+      }
+    };
+  }, [currentTrack?.id, currentTrack?.title, currentTrack?.artist, currentTrack?.album, currentTrack?.cover_url, currentTrack?.genre, isPlaying, playbackQueue, queueIndex, appOfflineMode, offlineTrackIds]);
+
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState || !duration) return;
+
+    try {
+      navigator.mediaSession.setPositionState({
+        duration,
+        playbackRate: 1,
+        position: Math.min(currentTime, duration)
+      });
+    } catch {
+      // Position state is optional in some WebViews.
+    }
+  }, [currentTime, duration]);
+
+  useEffect(() => {
     return () => {
       if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
     };
   }, [avatarPreviewUrl]);
 
   async function loadTracks() {
-    // Cargo las canciones subidas por los usuarios para mostrarlas en biblioteca y busqueda.
+    // Cargo las Canciones subidas por los usuarios para mostrarlas en biblioteca y busqueda.
     const { data, error } = await supabase
       .from('tracks')
       .select('*')
@@ -1220,18 +1322,18 @@ export function App() {
         if (cachedTracks.length > 0) {
           setTracksReady(true);
           setTracks(cachedTracks);
-          setMessage('Sin internet: usando canciones guardadas en este telefono.');
+          setMessage('Sin internet: usando canciones guardadas en este teléfono.');
           return;
         }
       } catch {
-        // Si el catalogo local esta corrupto, sigo con el error normal.
+        // Si el catálogo local esta corrupto, sigo con el error normal.
       }
 
       setTracksReady(false);
       setMessage(
         error.code === 'PGRST205' || error.message?.includes("public.tracks")
-          ? 'Falta completar la configuracion de Supabase o recargar el schema cache. La tabla public.tracks todavia no existe para la API.'
-          : (isNetworkFetchError(error) ? 'Sin internet: no hay canciones guardadas en este telefono.' : error.message)
+          ? 'Falta completar la configuración de Supabase o recargar el schema cache. La tabla public.tracks todavía no existe para la API.'
+          : (isNetworkFetchError(error) ? 'Sin internet: no hay canciones guardadas en este teléfono.' : error.message)
       );
       setTracks([]);
       return;
@@ -1263,7 +1365,7 @@ export function App() {
         setFolders([]);
         setFolderTracks([]);
         setFolderTablesReady(false);
-        setMessage('Completa la configuracion de Supabase para guardar canciones en Me gusta.');
+        setMessage('Completa la configuración de Supabase para guardar canciones en Me gusta.');
         return;
       }
 
@@ -1290,7 +1392,7 @@ export function App() {
         setFolders([]);
         setFolderTracks([]);
         setFolderTablesReady(false);
-        setMessage('Falta completar la configuracion de Supabase para activar Carpetas y carpetas compartidas.');
+        setMessage('Falta completar la configuración de Supabase para activar Carpetas y carpetas compartidas.');
         return;
       }
 
@@ -1332,7 +1434,7 @@ export function App() {
 
       if (itemsError.code === 'PGRST205' || itemsError.message?.includes('playlist_tracks')) {
         setFolderTracks([]);
-        setMessage('Falta completar la configuracion de Supabase para activar canciones en carpetas.');
+        setMessage('Falta completar la configuración de Supabase para activar canciones en carpetas.');
         return;
       }
 
@@ -1388,8 +1490,32 @@ export function App() {
     event.preventDefault();
     setMessage('');
 
+    if (authMode === 'reset') {
+      if (!authForm.password || authForm.password.length < 6) {
+        setMessage('La nueva contraseña debe tener mínimo 6 caracteres.');
+        return;
+      }
+
+      const { error } = await supabase.auth.updateUser({ password: authForm.password });
+      if (error) {
+        setMessage(error.message);
+        return;
+      }
+
+      setPasswordRecoveryMode(false);
+      setAuthMode('login');
+      setAuthForm((current) => ({ ...current, password: '' }));
+      setMessage('Contraseña actualizada.');
+      return;
+    }
+
+    if (authMode === 'forgot') {
+      await sendPasswordReset();
+      return;
+    }
+
     if (!authForm.email || !authForm.password) {
-      setMessage('Completa correo y contrasena.');
+      setMessage('Completa correo y contraseña.');
       return;
     }
 
@@ -1404,11 +1530,11 @@ export function App() {
         }
       });
 
-      setMessage(error ? error.message : 'Cuenta creada con exito. Revisa tu correo para confirmar y luego inicia sesion.');
+      setMessage(error ? error.message : 'Cuenta creada con éxito.');
       return;
     }
 
-    // Inicio sesion con correo y contrasena para entrar a la experiencia privada.
+    // Inicio sesión con correo y contraseña para entrar a la experiencia privada.
     const { error } = await supabase.auth.signInWithPassword({
       email: authForm.email,
       password: authForm.password
@@ -1419,6 +1545,7 @@ export function App() {
 
   async function signInWithGoogle() {
     setMessage('');
+
     // Abro el proveedor OAuth de Google configurado en Supabase Auth Providers.
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -1426,6 +1553,21 @@ export function App() {
     });
 
     if (error) setMessage(error.message);
+  }
+
+  async function sendPasswordReset() {
+    const email = authForm.email.trim();
+    if (!email) {
+      setMessage('Escribe tu correo para recuperar la contraseña.');
+      return;
+    }
+
+    setMessage('');
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: passwordResetRedirectUrl
+    });
+
+    setMessage(error ? error.message : 'Te enviamos un enlace para recuperar la contraseña.');
   }
 
   async function saveProfile(event) {
@@ -1449,7 +1591,7 @@ export function App() {
         });
 
       if (uploadError) {
-        setMessage(`${uploadError.message}. Si Supabase bloquea imagenes, revisa la configuracion del bucket para permitir avatares.`);
+        setMessage(`${uploadError.message}. Si Supabase bloquea imagenes, revisa la configuración del bucket para permitir avatares.`);
         setSavingProfile(false);
         return;
       }
@@ -1486,7 +1628,7 @@ export function App() {
   }
 
   async function signOut() {
-    // Cierro la sesion actual de Supabase y regreso la app al login.
+    // Cierro la sesión actual de Supabase y regreso la app al login.
     await supabase.auth.signOut();
     setProfileOpen(false);
   }
@@ -1514,7 +1656,7 @@ export function App() {
   async function uploadTrack(event) {
     event.preventDefault();
     if (!tracksReady) {
-      setMessage('Primero completa la configuracion de Supabase para crear tracks y el bucket songs.');
+      setMessage('Primero completa la configuración de Supabase para crear tracks y el bucket songs.');
       return;
     }
 
@@ -1522,13 +1664,13 @@ export function App() {
       ['Titulo', trackForm.title],
       ['Artista', trackForm.artist],
       ['Album', trackForm.album],
-      ['Genero', trackForm.genre],
+      ['género', trackForm.genre],
       ['Portada', trackForm.cover_mode === 'file' ? trackForm.cover_file : trackForm.cover_url],
       ['Tipo de subida', trackForm.source_mode]
     ];
 
     if (trackForm.genre === 'otros') {
-      requiredFields.push(['Genero personalizado', trackForm.custom_genre]);
+      requiredFields.push(['género personalizado', trackForm.custom_genre]);
     }
 
     if (trackForm.source_mode === 'file') {
@@ -1580,7 +1722,7 @@ export function App() {
         return;
       }
 
-      // Obtengo la URL publica del audio recien subido para guardarla junto con la cancion.
+      // Obtengo la URL pública del audio recién subido para guardarla junto con la canción.
       const { data: publicUrlData } = supabase.storage
         .from('songs')
         .getPublicUrl(filePath);
@@ -1615,7 +1757,7 @@ export function App() {
       coverUrl = coverPublicUrlData.publicUrl;
     }
 
-    // Registro la cancion en la tabla tracks para que aparezca en biblioteca y busqueda.
+    // Registro la canción en la tabla tracks para que aparezca en biblioteca y busqueda.
     const newTrackPayload = {
       user_id: user.id,
       title: trackForm.title.trim(),
@@ -1637,7 +1779,7 @@ export function App() {
     if (insertError) {
       if (insertError.message?.includes("public.tracks")) {
         setTracksReady(false);
-        setMessage('Supabase no encuentra public.tracks. Completa la configuracion de Supabase y espera unos segundos.');
+        setMessage('Supabase no encuentra public.tracks. Completa la configuración de Supabase y espera unos segundos.');
         setUploadingTrack(false);
         return;
       }
@@ -1649,7 +1791,7 @@ export function App() {
     setTrackForm(emptyTrackForm);
     setMetadataResults([]);
     setSelectedMetadataKey('');
-    setMessage(isAdmin ? 'Cancion subida correctamente.' : 'Cancion enviada a revision. El admin la vera en canciones pendientes.');
+    setMessage(isAdmin ? 'Canción subida correctamente.' : 'Canción enviada a revisión. El admin la verá en canciones pendientes.');
     setUploadingTrack(false);
     setActiveView('library');
     loadTracks();
@@ -1663,7 +1805,7 @@ export function App() {
       await supabase.storage.from('songs').remove([track.storage_path]);
     }
 
-    // Borro mi cancion de la tabla tracks; RLS impide borrar canciones de otros usuarios.
+    // Borro mi canción de la tabla tracks; RLS impide borrar canciones de otros usuarios.
     const { error } = await supabase
       .from('tracks')
       .delete()
@@ -1696,20 +1838,20 @@ export function App() {
       return;
     }
 
-    setMessage('Cancion aprobada. Ya aparece para todos.');
+    setMessage('canción aprobada. Ya aparece para todos.');
     loadTracks();
   }
 
   async function rejectTrack(track) {
     if (!isAdmin || !track?.id) return;
     await deleteTrack(track);
-    setMessage('Cancion rechazada y eliminada.');
+    setMessage('canción rechazada y eliminada.');
   }
 
   async function saveCategoryCover(channel) {
     if (!isAdmin) return;
     if (!categoryCoversReady) {
-      setMessage('Completa la configuracion de Supabase para activar la edicion de portadas de categorias.');
+      setMessage('Completa la configuración de Supabase para activar la edición de portadas de categorias.');
       return;
     }
 
@@ -1802,7 +1944,7 @@ export function App() {
     }
 
     setCurrentTrack(data);
-    setMessage('Cancion actualizada.');
+    setMessage('canción actualizada.');
     loadTracks();
   }
 
@@ -1811,7 +1953,7 @@ export function App() {
     const requestedName = folderForm.name.trim();
     if (!user || !requestedName) return;
     if (!folderTablesReady) {
-      setMessage('Completa la configuracion de Supabase para poder crear carpetas reales.');
+      setMessage('Completa la configuración de Supabase para poder crear carpetas reales.');
       return;
     }
 
@@ -1865,21 +2007,21 @@ export function App() {
       error?.message?.includes('playlist_tracks')
     ) {
       setFolderTablesReady(false);
-      setMessage('Falta completar la configuracion de Supabase para activar Me gusta y Carpetas.');
+      setMessage('Falta completar la configuración de Supabase para activar Me gusta y Carpetas.');
       return;
     }
 
-    setMessage(error?.message || 'No se pudo guardar la cancion.');
+    setMessage(error?.message || 'No se pudo guardar la canción.');
   }
 
-  async function addTrackToFolder(track, folderId, successMessage = 'Cancion agregada a la carpeta.') {
+  async function addTrackToFolder(track, folderId, successMessage = 'canción agregada a la carpeta.') {
     if (!track || !folderId || !user) return false;
     if (!folderTablesReady || folderId === 'likes-preview') {
-      setMessage('Completa la configuracion de Supabase para guardar canciones en carpetas reales.');
+      setMessage('Completa la configuración de Supabase para guardar canciones en carpetas reales.');
       return false;
     }
 
-    // Agrego la cancion elegida a la carpeta sin duplicarla.
+    // Agrego la canción elegida a la carpeta sin duplicarla.
     const { error } = await supabase
       .from('playlist_tracks')
       .upsert({
@@ -1901,7 +2043,7 @@ export function App() {
 
   async function addCurrentTrackToFolder(folderId) {
     if (!currentTrack) {
-      setMessage('Carga una cancion en el reproductor antes de agregarla a una carpeta.');
+      setMessage('Carga una canción en el reproductor antes de agregarla a una carpeta.');
       return;
     }
 
@@ -1910,7 +2052,7 @@ export function App() {
 
   async function addCurrentTrackToSelectedFolder() {
     if (!currentTrack) {
-      setMessage('Carga una cancion en el reproductor antes de agregarla a una carpeta.');
+      setMessage('Carga una canción en el reproductor antes de agregarla a una carpeta.');
       return;
     }
 
@@ -1927,7 +2069,7 @@ export function App() {
     if (!user) return null;
     if (likesFolder) return likesFolder;
     if (!folderTablesReady) {
-      setMessage('Completa la configuracion de Supabase para guardar canciones en Me gusta.');
+      setMessage('Completa la configuración de Supabase para guardar canciones en Me gusta.');
       return null;
     }
 
@@ -1960,13 +2102,13 @@ export function App() {
       for (const likesFolderItem of likesFolders) {
         await removeTrackFromFolder(likesFolderItem.id, track.id);
       }
-      setMessage('Cancion quitada de Me gusta.');
-      showSaveNotice('Cancion quitada de Me gusta.');
+      setMessage('canción quitada de Me gusta.');
+      showSaveNotice('canción quitada de Me gusta.');
       loadFolders();
       return;
     }
 
-    await addTrackToFolder(track, folder.id, 'Cancion guardada en Me gusta.');
+    await addTrackToFolder(track, folder.id, 'canción guardada en Me gusta.');
   }
 
   async function shareFolderWithEmail(folderId, email, showSuccess = true) {
@@ -2003,7 +2145,7 @@ export function App() {
   }
 
   async function removeTrackFromFolder(folderId, trackId, successMessage = '') {
-    // Quito una cancion de una carpeta propia o compartida donde tengo acceso.
+    // Quito una canción de una carpeta propia o compartida donde tengo acceso.
     const { error } = await supabase
       .from('playlist_tracks')
       .delete()
@@ -2022,7 +2164,7 @@ export function App() {
   function selectTrack(track) {
     if (!track?.audio_url) return;
     if (!isTrackPlayableNow(track)) {
-      setMessage('Esta cancion no esta disponible sin internet en este telefono.');
+      setMessage('Esta canción no está disponible sin internet en este teléfono.');
       return;
     }
     setPlaybackQueue([]);
@@ -2083,7 +2225,7 @@ export function App() {
         playTrackQueue(fallbackQueue, 0);
       } else {
         setActiveView('upload');
-        showPlayerMessage('Sube una cancion para reproducir.');
+        showPlayerMessage('Sube una canción para reproducir.');
       }
       return;
     }
@@ -2096,7 +2238,7 @@ export function App() {
       audioRef.current.play().catch((error) => {
         const name = String(error?.name || '');
         if (name !== 'AbortError' && name !== 'NotAllowedError') {
-          setMessage('No pude reproducir esta cancion. Prueba otra de la lista.');
+          setMessage('No pude reproducir esta canción. Prueba otra de la lista.');
         }
       });
     }
@@ -2119,7 +2261,7 @@ export function App() {
     }
 
     setActiveView('upload');
-    showPlayerMessage('Sube o elige una cancion para guardarla.');
+    showPlayerMessage('Sube o elige una canción para guardarla.');
   }
 
   function focusSearchView() {
@@ -2193,7 +2335,7 @@ export function App() {
   }
 
   function playPreviousFromQueue() {
-    const queue = playbackQueue.length > 0 ? playbackQueue : getFallbackQueue();
+    const queue = (playbackQueue.length > 0 ? playbackQueue : getFallbackQueue()).filter((track) => isTrackPlayableNow(track));
     if (queue.length === 0) return;
 
     const currentIndex = queue.findIndex((track) => track.id === currentTrack?.id);
@@ -2204,7 +2346,7 @@ export function App() {
   function playRandomTrack(toggleMode = true) {
     const queue = getFallbackQueue();
     if (queue.length === 0) {
-      setMessage('Sube una cancion para usar aleatorio.');
+      setMessage('Sube una canción para usar aleatorio.');
       return;
     }
 
@@ -2304,7 +2446,7 @@ export function App() {
     if (!track) return false;
 
     if (!isOfflineCapableTrack(track)) {
-      setMessage('Las canciones de YouTube no se pueden guardar sin internet. Usa canciones subidas como archivo.');
+      setMessage('Las canciones de YouTube no se pueden guardar sin internet. Usa Canciones subidas como archivo.');
       return false;
     }
 
@@ -2314,13 +2456,13 @@ export function App() {
     }
 
     if (!navigator.onLine) {
-      setMessage('Necesitas internet para guardar esta cancion sin conexion.');
+      setMessage('Necesitas internet para guardar esta canción sin conexión.');
       return false;
     }
 
     try {
       const response = await fetch(track.audio_url, { mode: 'cors' });
-      if (!response.ok) throw new Error('No se pudo descargar la cancion.');
+      if (!response.ok) throw new Error('No se pudo descargar la canción.');
 
       const cache = await caches.open(audioCacheName);
       await cache.put(track.audio_url, response);
@@ -2333,8 +2475,8 @@ export function App() {
       });
 
       if (showSuccess) {
-        showSaveNotice('Cancion disponible sin internet.');
-        setMessage('Cancion disponible sin internet en este telefono.');
+        showSaveNotice('canción disponible sin internet.');
+        setMessage('canción disponible sin internet en este teléfono.');
       }
       return true;
     } catch {
@@ -2356,7 +2498,7 @@ export function App() {
     }
   }
 
-  function showSaveNotice(text = 'Cancion guardada') {
+  function showSaveNotice(text = 'canción guardada') {
     setSaveNotice(text);
     window.setTimeout(() => setSaveNotice((current) => (current === text ? '' : current)), 2400);
   }
@@ -2386,16 +2528,21 @@ export function App() {
       return;
     }
 
-    if (playbackQueue.length > 0) {
-      const currentIndex = playbackQueue.findIndex((track) => track.id === currentTrack?.id);
-      const activeIndex = currentIndex >= 0 ? currentIndex : queueIndex;
-      const nextIndex = activeIndex < playbackQueue.length - 1 ? activeIndex + 1 : 0;
-      const nextTrack = playbackQueue[nextIndex];
+    const activeQueue = playbackQueue.filter((track) => isTrackPlayableNow(track));
+
+    if (activeQueue.length > 0) {
+      const currentIndex = activeQueue.findIndex((track) => track.id === currentTrack?.id);
+      const activeIndex = currentIndex >= 0 ? currentIndex : Math.min(queueIndex, activeQueue.length - 1);
+      const nextIndex = activeIndex < activeQueue.length - 1 ? activeIndex + 1 : 0;
+      const nextTrack = activeQueue[nextIndex];
+      setPlaybackQueue(activeQueue);
       setQueueIndex(nextIndex);
       setCurrentTrack(nextTrack);
       setActiveChannel(getDisplayChannelByGenre(nextTrack.genre));
       setProgress(0);
       setCurrentTime(0);
+      setDuration(0);
+      recordTrackPlay(nextTrack);
       setIsPlaying(true);
       return;
     }
@@ -2415,7 +2562,7 @@ export function App() {
     const term = [trackForm.title, trackForm.artist].filter(Boolean).join(' ').trim();
 
     if (!term) {
-      setMessage('Escribe el nombre de la cancion para buscar la portada.');
+      setMessage('Escribe el nombre de la canción para buscar la portada.');
       return;
     }
 
@@ -2443,10 +2590,10 @@ export function App() {
         applyMetadata(results[0]);
         setMessage('Datos encontrados. Puedes cambiar cualquier campo antes de subir.');
       } else {
-        setMessage('No encontre datos para esa cancion. Puedes llenar la portada manualmente.');
+        setMessage('No encontre datos para esa canción. Puedes llenar la portada manualmente.');
       }
     } catch (error) {
-      setMessage('No se pudo buscar la portada. Revisa tu conexion o pega una URL manual.');
+      setMessage('No se pudo buscar la portada. Revisa tu conexión o pega una URL manual.');
     } finally {
       setSearchingMetadata(false);
     }
@@ -2475,48 +2622,79 @@ export function App() {
     return <main className="splash"><Disc3 className="spin" /> Cargando {brandName}...</main>;
   }
 
-  if (!user) {
+  if (!user || passwordRecoveryMode) {
     return (
       <main className="auth-page">
         <section className="auth-hero">
           <div className="brand-mark sakura-brand"><img src={sakuraIcon} alt={`${brandJapanese} ${brandName}`} /></div>
           <h1>{brandName}</h1>
           <span className="creator-credit">Creado por {creatorName}</span>
-          <p>{brandJapanese} - tu espacio para anime, metal, rock, K-pop y pop con energia de primavera nocturna.</p>
+          <p>{brandJapanese} - tu espacio para anime, metal, rock, K-pop y pop con energía de primaverá nocturna.</p>
           <div className="hero-strip">
             {channels.map((channel) => <img key={channel.id} src={channel.image} alt={channel.name} />)}
           </div>
         </section>
 
         <section className="auth-card">
-          <button className="google-button" type="button" onClick={signInWithGoogle}>
-            <img className="google-logo" src={googleLogo} alt="" />
-            Continuar con Google
-          </button>
-          <div className="divider"><span>o</span></div>
+          {passwordRecoveryMode && (
+            <div className="reset-heading">
+              <h2>Crear nueva contraseña</h2>
+              <p>Escribe una contraseña nueva para volver a entrar.</p>
+            </div>
+          )}
+          {authMode === 'forgot' && !passwordRecoveryMode && (
+            <div className="reset-heading">
+              <h2>Recuperar contraseña</h2>
+              <p>Escribe tu correo y te enviaremos un enlace para cambiarla.</p>
+            </div>
+          )}
+          {!passwordRecoveryMode && authMode !== 'forgot' && (
+            <>
+              <button className="google-button" type="button" onClick={signInWithGoogle}>
+                <img className="google-logo" src={googleLogo} alt="" />
+                Continuar con Google
+              </button>
+              <div className="divider"><span>o</span></div>
+            </>
+          )}
           <form onSubmit={handleEmailAuth}>
-            {authMode === 'register' && (
+            {authMode === 'register' && !passwordRecoveryMode && (
               <label>
                 Nombre
                 <input value={authForm.username} onChange={(event) => setAuthForm({ ...authForm, username: event.target.value })} placeholder="Enrique" />
               </label>
             )}
-            <label>
-              Correo
-              <input type="email" value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} placeholder="tu@email.com" />
-            </label>
-            <label>
-              Contrasena
-              <input type="password" value={authForm.password} onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })} placeholder="Minimo 6 caracteres" />
-            </label>
+            {!passwordRecoveryMode && (
+              <label>
+                Correo
+                <input type="email" value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} placeholder="tu@email.com" />
+              </label>
+            )}
+            {authMode !== 'forgot' && (
+              <label>
+                {passwordRecoveryMode ? 'Nueva contraseña' : 'Contraseña'}
+                <input type="password" value={authForm.password} onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })} placeholder="mínimo 6 caracteres" />
+              </label>
+            )}
             <button className="primary" type="submit">
-              {authMode === 'login' ? <Lock size={18} /> : <UserPlus size={18} />}
-              {authMode === 'login' ? 'Iniciar sesion' : 'Crear cuenta'}
+              {authMode === 'login' ? <Lock size={18} /> : (authMode === 'forgot' || passwordRecoveryMode ? <KeyRound size={18} /> : <UserPlus size={18} />)}
+              {passwordRecoveryMode ? 'Guardar contraseña' : (authMode === 'forgot' ? 'Enviar enlace' : (authMode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'))}
             </button>
           </form>
-          <button className="ghost" type="button" onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}>
+          {authMode === 'login' && !passwordRecoveryMode && (
+            <button className="forgot-button" type="button" onClick={() => {
+              setMessage('');
+              setAuthMode('forgot');
+            }}>
+              Olvidé mi contraseña
+            </button>
+          )}
+          {!passwordRecoveryMode && <button className="ghost" type="button" onClick={() => {
+            setMessage('');
+            setAuthMode(authMode === 'login' ? 'register' : 'login');
+          }}>
             {authMode === 'login' ? 'Crear una cuenta nueva' : 'Ya tengo cuenta'}
-          </button>
+          </button>}
           {message && <p className="message">{message}</p>}
         </section>
       </main>
@@ -2542,7 +2720,7 @@ export function App() {
           >
             <Library size={19} /> Tu biblioteca
           </button>
-          <button className={activeView === 'upload' ? 'nav-active' : ''} onClick={() => setActiveView('upload')}><Upload size={19} /> Subir cancion</button>
+          <button className={activeView === 'upload' ? 'nav-active' : ''} onClick={() => setActiveView('upload')}><Upload size={19} /> Subir canción</button>
           <button className={activeView === 'premium' ? 'nav-active' : ''} onClick={openPremiumView}><Crown size={19} /> Premium</button>
         </nav>
         <span className="sidebar-section-title">Playlists</span>
@@ -2586,7 +2764,7 @@ export function App() {
               <Bell size={19} />
               {unreadNotifications > 0 && <span>{unreadNotifications}</span>}
             </button>
-            <button className="icon-button" type="button" title="Actualizar pagina" onClick={() => window.location.reload()}>
+            <button className="icon-button" type="button" title="Actualizar página" onClick={() => window.location.reload()}>
               <RefreshCw size={19} />
             </button>
             <button className="profile-button" onClick={() => setProfileOpen((open) => !open)}>
@@ -2609,7 +2787,7 @@ export function App() {
                   >
                     <img src={track.cover_url || getDisplayChannelByGenre(track.genre).image} alt={track.title} />
                     <span>
-                      <strong>Nueva cancion subida</strong>
+                      <strong>Nueva canción subida</strong>
                       <small>{track.title} - {track.artist}</small>
                     </span>
                   </button>
@@ -2626,7 +2804,7 @@ export function App() {
                 </div>
                 <div className="gmail-actions">
                   <button onClick={() => setEditingProfile((editing) => !editing)}><Edit3 size={18} /> Personalizar perfil</button>
-                  <button><KeyRound size={18} /> Contrasenas y Autocompletar</button>
+                  <button><KeyRound size={18} /> contraseñas y Autocompletar</button>
                   <button><ShieldCheck size={18} /> Gestionar cuenta de Google</button>
                   <button><Settings size={18} /> Sincronizacion activada</button>
                   <button onClick={signOut}><LogOut size={18} /> Cerrar este perfil</button>
@@ -2712,12 +2890,12 @@ export function App() {
                     </button>
                   </div>
                 </section>
-                <span className="eyebrow"><Info size={16} /> Informacion</span>
+                <span className="eyebrow"><Info size={16} /> información</span>
                 <h2>{currentTrack.title}</h2>
                 <dl>
                   <div><dt>Artista</dt><dd>{currentTrack.artist || 'Sin dato'}</dd></div>
                   <div><dt>Album</dt><dd>{currentTrack.album || 'Sin dato'}</dd></div>
-                  <div><dt>Genero</dt><dd>{currentTrack.genre || 'Sin dato'}</dd></div>
+                  <div><dt>género</dt><dd>{currentTrack.genre || 'Sin dato'}</dd></div>
                   <div><dt>Fuente de datos</dt><dd>{getTrackMetadataSource(currentTrack)}</dd></div>
                   <div><dt>Estado</dt><dd>{isPlaying ? 'Activa' : 'Pausada'}</dd></div>
                 </dl>
@@ -2738,7 +2916,7 @@ export function App() {
                       </select>
                     </label>
                     {trackEditForm.genre === 'otros' && (
-                      <label>Genero personalizado<input value={trackEditForm.custom_genre} onChange={(event) => setTrackEditForm({ ...trackEditForm, custom_genre: event.target.value })} /></label>
+                      <label>género personalizado<input value={trackEditForm.custom_genre} onChange={(event) => setTrackEditForm({ ...trackEditForm, custom_genre: event.target.value })} /></label>
                     )}
                     <label>URL portada<input value={trackEditForm.cover_url} onChange={(event) => setTrackEditForm({ ...trackEditForm, cover_url: event.target.value })} /></label>
                     <button className="primary" type="submit">Guardar cambios</button>
@@ -2843,7 +3021,7 @@ export function App() {
             <div className="hero-actions">
               <button className={`play-status ${canPlay && isPlaying ? 'playing' : ''}`} type="button" onClick={togglePlayer}>
                 {canPlay && isPlaying ? <Pause size={18} /> : <Play size={18} />}
-                {canPlay ? (isPlaying ? 'Pausar' : 'Reproducir') : 'Elige una cancion'}
+                {canPlay ? (isPlaying ? 'Pausar' : 'Reproducir') : 'Elige una canción'}
               </button>
               <button className="follow-button" type="button" onClick={saveCurrentFromHero}><Heart size={19} fill={currentTrackLiked ? 'currentColor' : 'none'} /> Guardar</button>
             </div>
@@ -2852,7 +3030,7 @@ export function App() {
 
         <section className="content-grid">
           {message && <p className="app-message">{message}</p>}
-          {appOfflineMode && <p className="app-message">Sin internet: mostrando solo canciones guardadas en este telefono.</p>}
+          {appOfflineMode && <p className="app-message">Sin internet: mostrando solo canciones guardadas en este teléfono.</p>}
 
           {(activeView === 'home' || activeView === 'search') && (
             <>
@@ -2888,7 +3066,7 @@ export function App() {
                           <button
                             className={`mini-play ${isChannelCurrent && isPlaying ? 'is-playing' : ''}`}
                             disabled={channelTracks.length === 0}
-                            title={isChannelCurrent && isPlaying ? 'Pausar' : 'Reproducir todo este catalogo'}
+                            title={isChannelCurrent && isPlaying ? 'Pausar' : 'Reproducir todo este catálogo'}
                             onClick={(event) => {
                               event.stopPropagation();
                               toggleQueue(channelTracks);
@@ -2931,7 +3109,7 @@ export function App() {
                       <span>{openedCatalog.name} Mix</span>
                     </div>
                     <div>
-                      <span>Playlist publica</span>
+                      <span>Playlist pública</span>
                       <h2>{openedCatalog.name} Mix</h2>
                       <p>{openedCatalog.mood}</p>
                       <strong>BeatBox - {openedCatalogTracks.length || openedCatalog.tracks.length} canciones</strong>
@@ -2953,7 +3131,7 @@ export function App() {
                   </div>
 
                   <div className="playlist-chips">
-                    <span>Descubrir mas</span>
+                    <span>Descubrir más</span>
                     <span>{openedCatalog.name}</span>
                     <span>Favoritas</span>
                     <span>Nuevas</span>
@@ -2967,7 +3145,7 @@ export function App() {
                       <span></span>
                     </div>
                     {openedCatalogTracks.length === 0 && (
-                      <p className="empty-state">{appOfflineMode ? 'No hay canciones guardadas sin internet en este catalogo.' : 'Todavia no hay canciones subidas en este catalogo.'}</p>
+                      <p className="empty-state">{appOfflineMode ? 'No hay canciones guardadas sin internet en este catálogo.' : 'todavía no hay Canciones subidas en este catálogo.'}</p>
                     )}
                     {openedCatalogTracks.map((track, index) => (
                       <div className={`playlist-track ${currentTrack?.id === track.id ? 'playing' : ''}`} key={track.id}>
@@ -2994,12 +3172,12 @@ export function App() {
 
               {isAdmin && pendingTracks.length > 0 && (
                 <>
-                  <div className="section-head"><h2>Canciones pendientes</h2><span>{pendingTracks.length} por aprobar</span></div>
+                  <div className="section-head"><h2>canciones pendientes</h2><span>{pendingTracks.length} por aprobar</span></div>
                   <div className="track-list pending-track-list">
                     {pendingTracks.map((track) => (
                       <article className="track-row pending-track-row" key={track.id}>
                         <img src={track.cover_url || getDisplayChannelByGenre(track.genre).image} alt={track.title} />
-                        <button className="row-play" type="button" onClick={() => selectTrack(track)} title="Revisar esta cancion"><Music2 size={16} /></button>
+                        <button className="row-play" type="button" onClick={() => selectTrack(track)} title="Revisar esta canción"><Music2 size={16} /></button>
                         <div><strong>{track.title}</strong><span>{track.artist}{track.album ? ` - ${track.album}` : ''}</span></div>
                         <div className="approval-actions">
                           <button className="approve-button" type="button" onClick={() => approveTrack(track)}>Aprobar</button>
@@ -3013,7 +3191,7 @@ export function App() {
 
               <div className="section-head recommended-head"><h2><span className="section-flower">✿</span> Canciones recomendadas para ti</h2></div>
               <div className="recommended-list">
-                {recommendedTracks.length === 0 && <p className="empty-state">{appOfflineMode ? 'No hay recomendaciones guardadas sin internet en este telefono.' : 'Sube canciones para crear recomendaciones.'}</p>}
+                {recommendedTracks.length === 0 && <p className="empty-state">{appOfflineMode ? 'No hay recomendaciones guardadas sin internet en este teléfono.' : 'Sube canciones para crear recomendaciones.'}</p>}
                 {recommendedTracks.map((track, index) => (
                   <article
                     className={`recommended-song ${currentTrack?.id === track.id ? 'playing' : ''}`}
@@ -3042,7 +3220,7 @@ export function App() {
 
               <div className="section-head"><h2>Canciones subidas</h2><span>{visibleTracks.length} canciones</span></div>
               <div className="track-list">
-                {visibleTracks.length === 0 && <p className="empty-state">{appOfflineMode ? 'No hay canciones guardadas sin internet en este telefono.' : 'Todavia no hay canciones subidas.'}</p>}
+                {visibleTracks.length === 0 && <p className="empty-state">{appOfflineMode ? 'No hay canciones guardadas sin internet en este teléfono.' : 'todavía no hay Canciones subidas.'}</p>}
                 {visibleTracks.map((track, index) => (
                   <article
                     className={`track-row ${currentTrack?.id === track.id ? 'playing' : ''}`}
@@ -3062,7 +3240,7 @@ export function App() {
                         event.stopPropagation();
                         playTrackQueue(visibleTracks, index);
                       }}
-                      title="Reproducir esta cancion"
+                      title="Reproducir esta canción"
                     >
                       <Music2 size={16} />
                     </button>
@@ -3097,7 +3275,7 @@ export function App() {
 
               {featuredArtists.length > 0 && (
                 <>
-                  <div className="section-head"><h2>Artistas recomendados</h2><span>Con canciones subidas</span></div>
+                  <div className="section-head"><h2>Artistas recomendados</h2><span>Con Canciones subidas</span></div>
                   <div className="artist-row">
                     {featuredArtists.map((artist) => (
                       <article
@@ -3135,7 +3313,7 @@ export function App() {
             <>
               <div className="section-head"><h2>Tu biblioteca</h2><span>{ownTracks.length} tuyas</span></div>
               <div className="track-list">
-                {ownTracks.length === 0 && <p className="empty-state">{appOfflineMode ? 'No hay canciones tuyas guardadas sin internet en este telefono.' : 'No has subido canciones todavia.'}</p>}
+                {ownTracks.length === 0 && <p className="empty-state">{appOfflineMode ? 'No hay canciones tuyas guardadas sin internet en este teléfono.' : 'No has subido canciones todavía.'}</p>}
                 {ownTracks.map((track, index, userTracks) => (
                   <article
                     className={`track-row ${currentTrack?.id === track.id ? 'playing' : ''}`}
@@ -3155,7 +3333,7 @@ export function App() {
                         event.stopPropagation();
                         playTrackQueue(userTracks, index);
                       }}
-                      title="Reproducir esta cancion"
+                      title="Reproducir esta canción"
                     >
                       <Music2 size={16} />
                     </button>
@@ -3232,7 +3410,7 @@ export function App() {
 
                 <div className="library-filter">
                   <Search size={22} />
-                  <span>Recientes</span>
+                  <span>reciéntes</span>
                 </div>
 
                 <div className="library-list">
@@ -3300,7 +3478,7 @@ export function App() {
                     <span></span>
                   </div>
                   {activeFolderItems.length === 0 && (
-                    <p className="empty-state">{folderTablesReady ? (appOfflineMode ? 'No hay canciones guardadas sin internet en esta carpeta.' : 'Guarda canciones con el corazon para verlas aqui.') : 'Completa la configuracion de Supabase para activar esta playlist.'}</p>
+                    <p className="empty-state">{folderTablesReady ? (appOfflineMode ? 'No hay canciones guardadas sin internet en esta carpeta.' : 'Guarda canciones con el corazón para verlas aquí.') : 'Completa la configuración de Supabase para activar esta playlist.'}</p>
                   )}
                   {activeFolderItems.map((item, index) => {
                     const track = item.tracks;
@@ -3328,8 +3506,8 @@ export function App() {
           {activeView === 'upload' && (
             <section className="upload-panel">
               <div>
-                <span className="eyebrow"><Music2 size={16} /> Nueva cancion</span>
-                <h2>Subir cancion</h2>
+                <span className="eyebrow"><Music2 size={16} /> Nueva canción</span>
+                <h2>Subir canción</h2>
                 <p>El archivo se guarda en Supabase Storage y aparece en tu biblioteca.</p>
               </div>
               <form onSubmit={uploadTrack}>
@@ -3353,7 +3531,7 @@ export function App() {
                   <>
                 <label>
                   Titulo
-                  <input required value={trackForm.title} onChange={(event) => setTrackForm({ ...trackForm, title: event.target.value })} placeholder="Nombre de la cancion" />
+                  <input required value={trackForm.title} onChange={(event) => setTrackForm({ ...trackForm, title: event.target.value })} placeholder="Nombre de la canción" />
                 </label>
                 <label>
                   Artista
@@ -3383,7 +3561,7 @@ export function App() {
                   <input required value={trackForm.album} onChange={(event) => setTrackForm({ ...trackForm, album: event.target.value })} placeholder="Album o single" />
                 </label>
                 <label>
-                  Genero
+                  género
                   <div className="genre-picker-scroll">
                     {uploadGenreChoices.map((choice) => (
                       <button
@@ -3404,7 +3582,7 @@ export function App() {
                 </label>
                 {trackForm.genre === 'otros' && (
                   <label>
-                    Genero personalizado
+                    género personalizado
                     <input required value={trackForm.custom_genre} onChange={(event) => setTrackForm({ ...trackForm, custom_genre: event.target.value })} placeholder="Reggaeton, jazz, trap, salsa..." />
                   </label>
                 )}
@@ -3453,7 +3631,7 @@ export function App() {
                 )}
                 <button className="primary" type="submit" disabled={uploadingTrack}>
                   <Upload size={18} />
-                  {uploadingTrack ? 'Subiendo...' : 'Subir cancion'}
+                  {uploadingTrack ? 'Subiendo...' : 'Subir canción'}
                 </button>
                   </>
                 )}
@@ -3464,9 +3642,9 @@ export function App() {
           {activeView === 'premium' && (
             <section className="wellness-panel">
               <div className="wellness-hero">
-                <span className="eyebrow"><Crown size={16} /> Tu Bienestar Musical</span>
+                <span className="eyebrow"><Crown size={16} /> Tu Bienestar Músical</span>
                 <h2>Sakura Health Score</h2>
-                <p>Cuida tu energia, tu descanso y tus oidos mientras escuchas Shigatsu no Uta.</p>
+                <p>Cuida tu energía, tu descanso y tus oidos mientras escuchas Shigatsu no Uta.</p>
                 <strong>{wellnessStats.hearingScore}/100</strong>
               </div>
 
@@ -3487,42 +3665,42 @@ export function App() {
                   <div className="wellness-meter"><span style={{ width: `${muted ? 0 : volume}%` }} /></div>
                   <p>Recomendado: {wellnessStats.recommendedVolume}% - 80%</p>
                   {wellnessStats.volumeWarning && <p className="wellness-alert">Volumen alto. Baja un poco para no cansar tus oidos.</p>}
-                  {wellnessStats.needsBreak && <p className="wellness-alert">Llevas mas de 2 horas escuchando. Toma un descanso de 10 minutos.</p>}
+                  {wellnessStats.needsBreak && <p className="wellness-alert">Llevas más de 2 horas escuchando. Toma un descanso de 10 minutos.</p>}
                 </article>
 
                 <article>
-                  <h3>Cancion del dia</h3>
+                  <h3>canción del día</h3>
                   {wellnessStats.songOfDay ? (
                     <button className="wellness-track" type="button" onClick={() => playTrackQueue([wellnessStats.songOfDay], 0)}>
                       <img src={wellnessStats.songOfDay.cover_url || getDisplayChannelByGenre(wellnessStats.songOfDay.genre).image} alt={wellnessStats.songOfDay.title} />
                       <span><strong>{wellnessStats.songOfDay.title}</strong><small>{wellnessStats.songOfDay.artist}</small></span>
                     </button>
                   ) : (
-                    <p>Escucha algunas canciones para descubrir tu recomendacion.</p>
+                    <p>Escucha algunas canciones para descubrir tu recomendación.</p>
                   )}
                 </article>
 
                 <article>
                   <h3>Estadisticas</h3>
                   <dl>
-                    <div><dt>Artista mas escuchado</dt><dd>{wellnessStats.favoriteArtist}</dd></div>
-                    <div><dt>Genero favorito</dt><dd>{wellnessStats.favoriteGenre}</dd></div>
-                    <div><dt>Cancion favorita</dt><dd>{wellnessStats.favoriteTrack}</dd></div>
-                    <div><dt>Racha musical</dt><dd>{wellnessStats.streak} dias</dd></div>
+                    <div><dt>Artista más escuchado</dt><dd>{wellnessStats.favoriteArtist}</dd></div>
+                    <div><dt>género favorito</dt><dd>{wellnessStats.favoriteGenre}</dd></div>
+                    <div><dt>canción favorita</dt><dd>{wellnessStats.favoriteTrack}</dd></div>
+                    <div><dt>Racha Músical</dt><dd>{wellnessStats.streak} días</dd></div>
                   </dl>
                 </article>
 
                 <article>
-                  <h3>Estado de animo musical</h3>
-                  <p className="wellness-mood">{wellnessStats.lateNight ? '🌙' : '🌸'} {wellnessStats.mood}</p>
-                  <p>{wellnessStats.lateNight ? 'Se recomienda musica relajante para proteger tu descanso.' : 'Tu energia musical esta activa para descubrir nuevos mixes.'}</p>
+                  <h3>Estado de ánimo Músical</h3>
+                  <p className="wellness-mood">{wellnessStats.lateNight ? 'ðŸŒ™' : 'ðŸŒ¸'} {wellnessStats.mood}</p>
+                  <p>{wellnessStats.lateNight ? 'Se recomienda Música relajante para proteger tu descanso.' : 'Tu energía Músical esta activa para descubrir nuevos mixes.'}</p>
                 </article>
 
                 <article>
                   <h3>Logros</h3>
                   <div className="achievement-list">
                     <span className={wellnessStats.totalSeconds >= 360000 ? 'earned' : ''}>Primeras 100 horas</span>
-                    <span className={wellnessStats.streak >= 7 ? 'earned' : ''}>7 dias seguidos</span>
+                    <span className={wellnessStats.streak >= 7 ? 'earned' : ''}>7 días seguidos</span>
                     <span className={Object.values(playCounts).reduce((total, count) => total + count, 0) >= 1000 ? 'earned' : ''}>1000 canciones</span>
                     <span className={wellnessStats.hearingScore >= 90 ? 'earned' : ''}>Oidos cuidados</span>
                   </div>
@@ -3552,7 +3730,7 @@ export function App() {
           ) : (
             <>
               <span className="player-empty-cover"><Music2 size={22} /></span>
-              <div><strong>Elige una cancion</strong><span>Sin musica en reproduccion</span></div>
+              <div><strong>Elige una canción</strong><span>Sin Música en reproducción</span></div>
             </>
           )}
           <button
@@ -3584,7 +3762,7 @@ export function App() {
         </div>
 
         <div className="player-extra">
-          <button className="plain-player-button" disabled={!currentTrack} onClick={openTrackInfo} title="Ver informacion de la cancion"><ListMusic size={19} /></button>
+          <button className="plain-player-button" disabled={!currentTrack} onClick={openTrackInfo} title="Ver información de la canción"><ListMusic size={19} /></button>
           <button className="plain-player-button" type="button" onClick={() => setActiveView('folders')} title="Biblioteca"><Library size={19} /></button>
           <button className={`plain-player-button ${muted ? 'active' : ''}`} type="button" onClick={toggleMute} title={muted ? 'Activar volumen' : 'Silenciar'}><Volume2 size={19} /></button>
           <input
@@ -3631,19 +3809,17 @@ export function App() {
             ref={audioRef}
             className="audio-player"
             src={offlineAudioUrl || currentTrack.audio_url}
+            preload="auto"
             onTimeUpdate={updateAudioProgress}
             onLoadedMetadata={updateAudioProgress}
             onCanPlay={() => {
-              if (!isPlaying || !audioRef.current) return;
-              audioRef.current.play().catch((error) => {
-                const name = String(error?.name || '');
-                if (name !== 'AbortError' && name !== 'NotAllowedError') setIsPlaying(false);
-              });
+              if (!isPlaying) return;
+              playAudioElement(true);
             }}
             onEnded={playNextFromQueue}
             onError={() => {
               setIsPlaying(false);
-              setMessage(navigator.onLine ? 'No pude reproducir este archivo de audio.' : 'Esta cancion no esta guardada sin internet en este telefono.');
+              setMessage(navigator.onLine ? 'No pude reproducir este archivo de audio.' : 'Esta canción no está guardada sin internet en este teléfono.');
             }}
           />
         )}
@@ -3666,7 +3842,7 @@ export function App() {
         <button className={activeView === 'home' ? 'active' : ''} type="button" onClick={() => setActiveView('home')}><Home size={24} fill={activeView === 'home' ? 'currentColor' : 'none'} /> Inicio</button>
         <button className={activeView === 'search' ? 'active' : ''} type="button" onClick={focusSearchView}><Search size={24} /> Buscar</button>
         <button className={activeView === 'folders' ? 'active' : ''} type="button" onClick={() => setActiveView('folders')}><Library size={24} /> Tu biblioteca</button>
-        <button className={activeView === 'upload' ? 'active' : ''} type="button" onClick={() => setActiveView('upload')}><Upload size={24} /> Subir cancion</button>
+        <button className={activeView === 'upload' ? 'active' : ''} type="button" onClick={() => setActiveView('upload')}><Upload size={24} /> Subir canción</button>
         <button className={activeView === 'premium' ? 'active' : ''} type="button" onClick={openPremiumView}><Crown size={24} /> Premium</button>
       </nav>
     </main>
