@@ -397,6 +397,7 @@ export function App() {
   const [tracks, setTracks] = useState([]);
   const [folders, setFolders] = useState([]);
   const [folderTracks, setFolderTracks] = useState([]);
+  const [folderColorOverrides, setFolderColorOverrides] = useState({});
   const [folderForm, setFolderForm] = useState(emptyFolderForm);
   const [activeFolderId, setActiveFolderId] = useState('likes-preview');
   const [creatingFolder, setCreatingFolder] = useState(false);
@@ -537,6 +538,7 @@ export function App() {
       setAvatarMode('url');
       setAvatarFile(null);
       setPlayCounts({});
+      setFolderColorOverrides({});
       setListeningStats({ totalSeconds: 0, byDate: {}, byMonth: {}, byGenre: {}, byArtist: {}, byTrack: {} });
       return;
     }
@@ -556,6 +558,12 @@ export function App() {
       setPlayCounts(JSON.parse(localStorage.getItem(`playCounts:${user.id}`) || '{}'));
     } catch {
       setPlayCounts({});
+    }
+
+    try {
+      setFolderColorOverrides(JSON.parse(localStorage.getItem(`playlistColors:${user.id}`) || '{}'));
+    } catch {
+      setFolderColorOverrides({});
     }
 
     try {
@@ -884,7 +892,7 @@ export function App() {
   }, [folderTracks, likesFolders]);
   const currentTrackLiked = Boolean(currentTrack && likedTrackIds.has(currentTrack.id));
   function getFolderDisplayColor(folder) {
-    return folder?.color || getGeneratedPlaylistColor(folder);
+    return folderColorOverrides[folder?.id] || folder?.color || getGeneratedPlaylistColor(folder);
   }
 
   function getFolderItems(folder) {
@@ -2076,6 +2084,12 @@ export function App() {
     setCreatingFolder(false);
     setMessage('Carpeta creada.');
     setActiveFolderId(folder.id);
+    const createdColor = folderPayload.color;
+    setFolderColorOverrides((current) => {
+      const next = { ...current, [folder.id]: createdColor };
+      localStorage.setItem(`playlistColors:${user.id}`, JSON.stringify(next));
+      return next;
+    });
     if (options.selectForTrack) setSelectedFolderId(folder.id);
     loadFolders();
     return folder;
@@ -2084,6 +2098,11 @@ export function App() {
   async function updatePlaylistColor(folder, color) {
     if (!folder || folder.is_preview || folder.owner_id !== user?.id) return;
 
+    setFolderColorOverrides((current) => {
+      const next = { ...current, [folder.id]: color };
+      localStorage.setItem(`playlistColors:${user.id}`, JSON.stringify(next));
+      return next;
+    });
     setFolders((current) => current.map((item) => item.id === folder.id ? { ...item, color } : item));
 
     const { error } = await supabase
@@ -2093,7 +2112,7 @@ export function App() {
 
     if (error) {
       setMessage(error.message?.includes('color')
-        ? 'Agrega la columna color en Supabase para guardar colores de playlist.'
+        ? 'Color guardado en este navegador. Ejecuta el SQL de colores para guardarlo tambien en Supabase.'
         : error.message);
     }
   }
@@ -2203,6 +2222,11 @@ export function App() {
     }
 
     setFolders((current) => [folder, ...current]);
+    setFolderColorOverrides((current) => {
+      const next = { ...current, [folder.id]: '#7f63ff' };
+      localStorage.setItem(`playlistColors:${user.id}`, JSON.stringify(next));
+      return next;
+    });
     setActiveFolderId(folder.id);
     return folder;
   }
