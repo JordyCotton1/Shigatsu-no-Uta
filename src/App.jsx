@@ -271,6 +271,21 @@ function formatListenDuration(seconds = 0) {
   return `${hours}h ${minutes}m`;
 }
 
+function isSupabasePermissionError(error) {
+  const text = [error?.code, error?.status, error?.message, error?.details]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  return (
+    text.includes('403') ||
+    text.includes('permission denied') ||
+    text.includes('row-level security') ||
+    text.includes('violates row-level security') ||
+    text.includes('not authorized')
+  );
+}
+
 function hashText(text = '') {
   return [...text].reduce((hash, character) => {
     const nextHash = ((hash << 5) - hash) + character.charCodeAt(0);
@@ -1439,9 +1454,10 @@ export function App() {
         return;
       }
 
-      if (itemsError.code === 'PGRST205' || itemsError.message?.includes('playlist_tracks')) {
+      if (itemsError.code === 'PGRST205' || itemsError.message?.includes('playlist_tracks') || isSupabasePermissionError(itemsError)) {
         setFolderTracks([]);
-        setMessage('Falta completar la configuración de Supabase para activar canciones en carpetas.');
+        setFolderTablesReady(false);
+        setMessage('Falta activar los permisos de Supabase para guardar canciones en carpetas.');
         return;
       }
 
@@ -2011,10 +2027,11 @@ export function App() {
     if (
       error?.code === 'PGRST205' ||
       error?.message?.includes('playlist_folders') ||
-      error?.message?.includes('playlist_tracks')
+      error?.message?.includes('playlist_tracks') ||
+      isSupabasePermissionError(error)
     ) {
       setFolderTablesReady(false);
-      setMessage('Falta completar la configuración de Supabase para activar Me gusta y Carpetas.');
+      setMessage('Falta activar los permisos de Supabase para Me gusta y Carpetas.');
       return;
     }
 
