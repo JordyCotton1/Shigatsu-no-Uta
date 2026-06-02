@@ -2663,6 +2663,19 @@ export function App() {
     setIsPlaying(false);
   }
 
+  function toggleFolderTrack(index) {
+    const queue = activeFolderItems.map((item) => item.tracks).filter(Boolean);
+    const selectedTrack = queue[index];
+    if (!selectedTrack) return;
+
+    if (currentTrack?.id === selectedTrack.id) {
+      setIsPlaying((playing) => !playing);
+      return;
+    }
+
+    playTrackQueue(queue, index);
+  }
+
   async function searchTrackMetadata() {
     const term = [trackForm.title, trackForm.artist].filter(Boolean).join(' ').trim();
 
@@ -2832,17 +2845,28 @@ export function App() {
         <div className="genre-list">
           {libraryFolders.map((folder, index) => {
             const folderName = folder.is_preview || isLikesFolderName(folder.name) ? 'Tus me gusta' : folder.name;
-            const color = channels[index % channels.length]?.accent ?? '#ff8fbd';
+            const isLikesFolder = folder.is_preview || isLikesFolderName(folder.name);
+            const likesFolderIds = new Set(likesFolders.map((likesItem) => likesItem.id));
+            const items = isLikesFolder
+              ? folderTracks.filter((item) => likesFolderIds.has(item.folder_id) && canCurrentUserSeeTrack(item.tracks))
+              : folderTracks.filter((item) => item.folder_id === folder.id && canCurrentUserSeeTrack(item.tracks));
+            const color = getFolderDisplayColor(folder);
+            const coverUrls = getFolderCoverUrls(folder, items);
             return (
             <button
               key={folder.id}
               className={activeView === 'folders' && activeFolder?.id === folder.id ? 'selected' : ''}
+              style={{ '--playlist-color': color }}
               onClick={() => {
                 setActiveFolderId(folder.id);
                 setActiveView('folders');
               }}
             >
-              <span style={{ background: color }} /> {folderName}
+              <span className={`playlist-cover sidebar-playlist-cover ${coverUrls.length > 1 ? 'mosaic' : ''}`}>
+                {coverUrls.length > 0 ? coverUrls.map((coverUrl) => <img src={coverUrl} alt="" key={coverUrl} />) : null}
+                {coverUrls.length === 0 && (isLikesFolder ? <Heart size={18} fill="currentColor" /> : <Music2 size={17} />)}
+              </span>
+              <strong>{folderName}</strong>
             </button>
             );
           })}
@@ -3622,14 +3646,14 @@ export function App() {
                         key={`${activeFolder.id}-${track.id}`}
                         role="button"
                         tabIndex={0}
-                        onClick={() => playTrackQueue(activeFolderItems.map((item) => item.tracks), index)}
+                        onClick={() => toggleFolderTrack(index)}
                         onKeyDown={(event) => {
                           if (event.key !== 'Enter' && event.key !== ' ') return;
                           event.preventDefault();
-                          playTrackQueue(activeFolderItems.map((item) => item.tracks), index);
+                          toggleFolderTrack(index);
                         }}
                       >
-                        <span>{currentTrack?.id === track.id ? <Play size={16} fill="currentColor" /> : index + 1}</span>
+                        <span>{currentTrack?.id === track.id && isPlaying ? <Pause size={16} /> : <Play size={16} fill="currentColor" />}</span>
                         <img src={track.cover_url || activeChannel.image} alt={track.title} />
                         <div className="playlist-track-info">
                           <strong>{track.title}</strong>

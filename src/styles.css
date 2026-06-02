@@ -554,7 +554,7 @@ select:focus { border-color: var(--green); }
   font-weight: 700;
 }
 .sidebar button:hover, .sidebar .nav-active, .genre-list .selected { color: #fff; background: #1a1a1a; }
-.genre-list span { width: 12px; height: 12px; border-radius: 3px; }
+.genre-list > button > span:not(.playlist-cover) { width: 12px; height: 12px; border-radius: 3px; }
 
 .main-view { min-width: 0; background: linear-gradient(180deg, #202020, #090909 340px); }
 .topbar {
@@ -2842,6 +2842,24 @@ body {
   color: #f1dfe7;
   min-height: 58px;
   padding: 0 16px;
+}
+
+.genre-list button {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.genre-list button strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.genre-list .sidebar-playlist-cover {
+  border-radius: 4px;
+  height: 46px;
+  width: 46px;
 }
 
 .sidebar button:hover,
