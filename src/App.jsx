@@ -989,12 +989,19 @@ export function App() {
     if (!audio || !canStream) return;
 
     if (isPlaying) {
-      audio.load();
       playAudioElement(true);
     } else {
       audio.pause();
     }
-  }, [isPlaying, canStream, currentTrack?.audio_url, offlineAudioUrl]);
+  }, [isPlaying, canStream]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !canStream) return;
+
+    audio.load();
+    if (isPlaying) playAudioElement(true);
+  }, [canStream, currentTrack?.audio_url, offlineAudioUrl]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2232,15 +2239,6 @@ export function App() {
 
     if (!isPlaying && volume <= 0) {
       setPlayerVolume(85);
-    }
-
-    if (!isPlaying && canStream && audioRef.current) {
-      audioRef.current.play().catch((error) => {
-        const name = String(error?.name || '');
-        if (name !== 'AbortError' && name !== 'NotAllowedError') {
-          setMessage('No pude reproducir esta canción. Prueba otra de la lista.');
-        }
-      });
     }
 
     setIsPlaying((playing) => !playing);
