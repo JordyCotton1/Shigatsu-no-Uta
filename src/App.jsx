@@ -1463,6 +1463,49 @@ export function App() {
   }, [currentTrack?.id, currentTrack?.title, currentTrack?.artist, currentTrack?.album, currentTrack?.cover_url, currentTrack?.genre, currentTrackIsYoutube, currentTime, duration, isPlaying, playbackQueue, queueIndex, appOfflineMode, offlineTrackIds]);
 
   useEffect(() => {
+    const nativeAudio = window.ShigatsuNativeAudio;
+    if (!nativeAudio?.updateMedia) return;
+
+    nativeAudio.updateMedia(JSON.stringify({
+      title: currentTrack?.title || brandName,
+      artist: currentTrack?.artist || brandName,
+      album: currentTrack?.album || '',
+      coverUrl: currentTrack?.cover_url || getDisplayChannelByGenre(currentTrack?.genre).image,
+      playing: Boolean(currentTrack && isPlaying),
+      duration: Number(duration || 0),
+      position: Number(currentTime || 0)
+    }));
+  }, [currentTrack?.id, currentTrack?.title, currentTrack?.artist, currentTrack?.album, currentTrack?.cover_url, currentTrack?.genre, currentTime, duration, isPlaying]);
+
+  useEffect(() => {
+    function handleNativeMediaAction(event) {
+      const action = event.detail;
+      if (action === 'play') {
+        setIsPlaying(true);
+        return;
+      }
+      if (action === 'pause') {
+        setIsPlaying(false);
+        return;
+      }
+      if (action === 'toggle') {
+        togglePlayer();
+        return;
+      }
+      if (action === 'next') {
+        playNextFromQueue();
+        return;
+      }
+      if (action === 'previous') {
+        playPreviousFromQueue();
+      }
+    }
+
+    window.addEventListener('shigatsu-native-media-action', handleNativeMediaAction);
+    return () => window.removeEventListener('shigatsu-native-media-action', handleNativeMediaAction);
+  }, [currentTrack?.id, isPlaying, playbackQueue, queueIndex, shuffleOn, repeatOn, appOfflineMode, offlineTrackIds]);
+
+  useEffect(() => {
     if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState || !duration) return;
 
     try {
@@ -2697,7 +2740,7 @@ export function App() {
 
   function isTrackPlayableNow(track) {
     if (!appOfflineMode) return Boolean(track?.audio_url);
-    return Boolean(isOfflineCapableTrack(track) && offlineTrackIds.includes(track.id));
+    return isOfflineCapableTrack(track);
   }
 
   async function cacheTrackForOffline(track, showSuccess = true) {
@@ -3242,7 +3285,7 @@ export function App() {
                       title="Guardar para escuchar sin internet"
                     >
                       <Download size={18} />
-                      {currentTrackOffline ? 'Disponible sin internet' : 'Guardar sin internet'}
+                      {currentTrackOffline ? 'Disponible sin internet' : 'Descargar sin internet'}
                     </button>
                   )}
                   <label>

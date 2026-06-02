@@ -4948,14 +4948,14 @@ body {
 }
 
 .offline-save-button {
-  background: rgba(255, 255, 255, 0.07) !important;
-  border-color: rgba(255, 143, 189, 0.24) !important;
-  color: #ffd4e7 !important;
+  background: rgba(34, 197, 94, 0.14) !important;
+  border-color: rgba(34, 197, 94, 0.5) !important;
+  color: #ff8fbd !important;
 }
 
 .offline-save-button.offline-ready {
-  background: rgba(34, 197, 94, 0.16) !important;
-  border-color: rgba(34, 197, 94, 0.62) !important;
+  background: rgba(34, 197, 94, 0.2) !important;
+  border-color: rgba(34, 197, 94, 0.72) !important;
   color: #ff8fbd !important;
 }
 
