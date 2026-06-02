@@ -3630,13 +3630,6 @@ export function App() {
                   </form>
                 )}
 
-                <div className="library-filter">
-                  <Search size={22} />
-                  <button type="button" onClick={() => setLibrarySortMode((mode) => mode === 'recent' ? 'name' : 'recent')}>
-                    {librarySortMode === 'recent' ? 'recientes' : 'nombre'}
-                  </button>
-                </div>
-
                 <div className="library-list">
                   {visibleLibraryFolders.map((folder) => {
                     const isLikesFolder = isLikesFolderName(folder.name) || folder.is_preview;

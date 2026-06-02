@@ -1780,24 +1780,6 @@ select:focus { border-color: var(--green); }
   padding: 11px 18px;
 }
 
-.library-filter {
-  align-items: center;
-  color: var(--muted);
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.library-filter button {
-  border: 0;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #f8dce8;
-  font-weight: 700;
-  min-height: 34px;
-  padding: 0 14px;
-}
-
 .library-list {
   display: grid;
   gap: 6px;
@@ -2148,7 +2130,7 @@ select:focus { border-color: var(--green); }
 }
 
 .playlist-track {
-  background: rgba(255, 255, 255, 0.035);
+  background: linear-gradient(90deg, rgba(255, 143, 189, 0.055), rgba(10, 7, 13, 0.84));
   border: 1px solid transparent;
   border-radius: 8px;
   cursor: pointer;
@@ -2191,6 +2173,7 @@ select:focus { border-color: var(--green); }
 }
 
 .playlist-track-info {
+  background: transparent;
   color: #fff;
   min-width: 0;
   padding: 0;
@@ -3288,7 +3271,7 @@ body {
 
 .track-row,
 .playlist-track {
-  background: rgba(255, 255, 255, 0.035);
+  background: linear-gradient(90deg, rgba(255, 143, 189, 0.055), rgba(10, 7, 13, 0.84));
 }
 
 .track-row.playing,
