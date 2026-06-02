@@ -400,6 +400,11 @@ export function App() {
   const [folderColorOverrides, setFolderColorOverrides] = useState({});
   const [folderForm, setFolderForm] = useState(emptyFolderForm);
   const [activeFolderId, setActiveFolderId] = useState('likes-preview');
+  const [playlistSearchOpen, setPlaylistSearchOpen] = useState(false);
+  const [playlistQuery, setPlaylistQuery] = useState('');
+  const [playlistGenreFilter, setPlaylistGenreFilter] = useState('all');
+  const [playlistSortMode, setPlaylistSortMode] = useState('custom');
+  const [librarySortMode, setLibrarySortMode] = useState('recent');
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [trackForm, setTrackForm] = useState(emptyTrackForm);
   const [selectedMetadataKey, setSelectedMetadataKey] = useState('');
@@ -872,6 +877,12 @@ export function App() {
     setDuration(0);
   }, [appOfflineMode, currentTrack?.id, offlineTrackIds, playablePublicTracks]);
 
+  useEffect(() => {
+    setPlaylistQuery('');
+    setPlaylistGenreFilter('all');
+    setPlaylistSearchOpen(false);
+  }, [activeFolderId]);
+
   const uploadGenreChoices = useMemo(() => ([
     ...channels.map((channel) => ({ value: channel.id, label: channel.name })),
     ...customGenreOptions.map((genre) => ({ value: genre, label: genre, custom: true }))
@@ -967,13 +978,55 @@ export function App() {
 
     return hasLikes ? sortedFolders : [previewLikes, ...sortedFolders];
   }, [folders, user?.id]);
+  const visibleLibraryFolders = useMemo(() => {
+    const likes = libraryFolders.filter((folder) => folder.is_preview || isLikesFolderName(folder.name));
+    const rest = libraryFolders.filter((folder) => !folder.is_preview && !isLikesFolderName(folder.name));
+    const sortedRest = [...rest].sort((a, b) => {
+      if (librarySortMode === 'name') return (a.name || '').localeCompare(b.name || '');
+      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    });
+    return [...likes, ...sortedRest];
+  }, [libraryFolders, librarySortMode]);
   const activeFolder = useMemo(
-    () => libraryFolders.find((folder) => folder.id === activeFolderId) ?? libraryFolders[0],
-    [activeFolderId, libraryFolders]
+    () => libraryFolders.find((folder) => folder.id === activeFolderId) ?? visibleLibraryFolders[0],
+    [activeFolderId, libraryFolders, visibleLibraryFolders]
   );
-  const activeFolderItems = useMemo(() => getFolderItems(activeFolder), [activeFolder, appOfflineMode, canCurrentUserSeeTrack, folderTracks, likesFolders, offlineTrackIds]);
+  const baseActiveFolderItems = useMemo(() => getFolderItems(activeFolder), [activeFolder, appOfflineMode, canCurrentUserSeeTrack, folderTracks, likesFolders, offlineTrackIds]);
+  const activeFolderGenres = useMemo(() => {
+    const seen = new Set();
+    return baseActiveFolderItems
+      .map((item) => item.tracks?.genre || 'Sin género')
+      .filter((genre) => {
+        const key = normalizeFolderName(genre);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }, [baseActiveFolderItems]);
+  const activeFolderItems = useMemo(() => {
+    const normalizedQuery = playlistQuery.trim().toLowerCase();
+    const normalizedGenre = normalizeFolderName(playlistGenreFilter);
+
+    const filteredItems = baseActiveFolderItems.filter((item) => {
+      const track = item.tracks;
+      if (!track) return false;
+      const matchesGenre = playlistGenreFilter === 'all' || normalizeFolderName(track.genre || 'Sin género') === normalizedGenre;
+      const matchesQuery = !normalizedQuery || [track.title, track.artist, track.album, track.genre].join(' ').toLowerCase().includes(normalizedQuery);
+      return matchesGenre && matchesQuery;
+    });
+
+    if (playlistSortMode === 'title') {
+      return [...filteredItems].sort((a, b) => (a.tracks?.title || '').localeCompare(b.tracks?.title || ''));
+    }
+
+    if (playlistSortMode === 'recent') {
+      return [...filteredItems].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    }
+
+    return filteredItems;
+  }, [baseActiveFolderItems, playlistGenreFilter, playlistQuery, playlistSortMode]);
   const activeFolderColor = getFolderDisplayColor(activeFolder);
-  const activeFolderCoverUrl = getFolderCoverUrl(activeFolder, activeFolderItems);
+  const activeFolderCoverUrl = getFolderCoverUrl(activeFolder, baseActiveFolderItems);
   const openedCatalogTracks = useMemo(() => {
     if (!openedCatalog) return [];
     return playablePublicTracks.filter((track) => trackMatchesChannel(track, openedCatalog));
@@ -2867,7 +2920,7 @@ export function App() {
         </nav>
         <span className="sidebar-section-title">Playlists</span>
         <div className="genre-list">
-          {libraryFolders.map((folder, index) => {
+          {visibleLibraryFolders.map((folder) => {
             const folderName = folder.is_preview || isLikesFolderName(folder.name) ? 'Tus me gusta' : folder.name;
             const isLikesFolder = folder.is_preview || isLikesFolderName(folder.name);
             const likesFolderIds = new Set(likesFolders.map((likesItem) => likesItem.id));
@@ -3579,11 +3632,13 @@ export function App() {
 
                 <div className="library-filter">
                   <Search size={22} />
-                  <span>reciéntes</span>
+                  <button type="button" onClick={() => setLibrarySortMode((mode) => mode === 'recent' ? 'name' : 'recent')}>
+                    {librarySortMode === 'recent' ? 'recientes' : 'nombre'}
+                  </button>
                 </div>
 
                 <div className="library-list">
-                  {libraryFolders.map((folder) => {
+                  {visibleLibraryFolders.map((folder) => {
                     const isLikesFolder = isLikesFolderName(folder.name) || folder.is_preview;
                     const likesFolderIds = new Set(likesFolders.map((likesItem) => likesItem.id));
                     const items = isLikesFolder
@@ -3634,21 +3689,39 @@ export function App() {
                     {currentTrack && activeFolderItems.some((item) => item.tracks?.id === currentTrack.id) && isPlaying ? <Pause size={26} /> : <Play size={26} fill="currentColor" />}
                   </button>
                   <button type="button" disabled={!currentTrack || activeFolder?.is_preview} onClick={() => addCurrentTrackToFolder(activeFolder.id)}><Plus size={26} /></button>
-                  <button type="button"><Search size={22} /></button>
+                  <button className={playlistSearchOpen ? 'active' : ''} type="button" onClick={() => setPlaylistSearchOpen((open) => !open)} title="Buscar en playlist"><Search size={22} /></button>
                   {!activeFolder?.is_preview && activeFolder?.owner_id === user.id && (
                     <label className="playlist-color-inline" title="Cambiar color de playlist">
                       <input type="color" value={activeFolderColor} onChange={(event) => updatePlaylistColor(activeFolder, event.target.value)} />
                       Color de playlist
                     </label>
                   )}
-                  <span>Orden personalizado</span>
+                  <button className="playlist-sort-button" type="button" onClick={() => setPlaylistSortMode((mode) => mode === 'custom' ? 'recent' : mode === 'recent' ? 'title' : 'custom')}>
+                    {playlistSortMode === 'custom' ? 'Orden personalizado' : playlistSortMode === 'recent' ? 'Más recientes' : 'Por título'}
+                  </button>
                 </div>
 
+                {playlistSearchOpen && (
+                  <label className="playlist-search-inline">
+                    <Search size={18} />
+                    <input value={playlistQuery} onChange={(event) => setPlaylistQuery(event.target.value)} placeholder="Buscar dentro de esta playlist" />
+                  </label>
+                )}
+
                 <div className="playlist-chips">
-                  <span>Pop</span>
-                  <span>Latino</span>
-                  <span>Anime</span>
-                  <span>Serenidad</span>
+                  <button className={playlistGenreFilter === 'all' ? 'active' : ''} type="button" onClick={() => setPlaylistGenreFilter('all')}>
+                    Todas
+                  </button>
+                  {activeFolderGenres.map((genre) => (
+                    <button
+                      className={playlistGenreFilter === genre ? 'active' : ''}
+                      key={genre}
+                      type="button"
+                      onClick={() => setPlaylistGenreFilter(genre)}
+                    >
+                      {genre}
+                    </button>
+                  ))}
                 </div>
 
                 <div className="playlist-table">
