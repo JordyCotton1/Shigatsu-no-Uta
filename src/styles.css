@@ -1898,7 +1898,8 @@ select:focus { border-color: var(--green); }
 
 .playlist-cover {
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--playlist-color, #1ed760) 68%, #111 32%), color-mix(in srgb, var(--playlist-color, #1ed760) 92%, #fff 8%));
+    linear-gradient(180deg, color-mix(in srgb, var(--playlist-color, #ff7db6) 20%, transparent), rgba(0, 0, 0, 0.15)),
+    url("../fondos/fondo.png") center/cover;
   color: #fff;
   font-weight: 950;
   overflow: hidden;
@@ -1911,18 +1912,25 @@ select:focus { border-color: var(--green); }
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.58)),
-    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.28), transparent 34%);
+    linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.22)),
+    radial-gradient(circle at 50% 58%, color-mix(in srgb, var(--playlist-color, #ff7db6) 45%, transparent) 0 34%, transparent 35%),
+    repeating-radial-gradient(circle at 50% 58%, color-mix(in srgb, var(--playlist-color, #ff7db6) 75%, transparent) 0 2px, transparent 3px 10px);
   z-index: -1;
 }
 
 .playlist-cover img {
-  height: 100%;
-  inset: 0;
+  aspect-ratio: 1;
+  border: 3px solid color-mix(in srgb, var(--playlist-color, #ff7db6) 78%, #fff 22%);
+  border-radius: 999px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+  height: 48%;
+  left: 50%;
   object-fit: cover;
   position: absolute;
-  width: 100%;
-  z-index: -2;
+  top: 54%;
+  transform: translate(-50%, -50%);
+  width: 48%;
+  z-index: -1;
 }
 
 .playlist-cover small {
@@ -1934,6 +1942,7 @@ select:focus { border-color: var(--green); }
   text-align: center;
   text-shadow: 0 3px 16px rgba(0, 0, 0, 0.65);
   text-transform: uppercase;
+  transform: translateY(-18%);
 }
 
 .library-list .liked-cover,
@@ -1941,6 +1950,20 @@ select:focus { border-color: var(--green); }
 .library-list .playlist-cover {
   height: 70px;
   width: 70px;
+}
+
+.library-list .playlist-cover img {
+  border-width: 2px;
+  height: 44%;
+  top: 58%;
+  width: 44%;
+}
+
+.library-list .playlist-cover small {
+  font-size: 0.55rem;
+  line-height: 1;
+  max-width: 82%;
+  transform: translateY(-115%);
 }
 
 .spotify-playlist {
@@ -1951,10 +1974,10 @@ select:focus { border-color: var(--green); }
 .playlist-hero {
   align-items: end;
   display: grid;
-  grid-template-columns: 230px minmax(0, 1fr);
-  gap: 30px;
-  min-height: 260px;
-  padding: 42px 44px 34px;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 24px;
+  min-height: 230px;
+  padding: 34px 40px 28px;
 }
 
 .liked-cover.big,
@@ -1963,11 +1986,11 @@ select:focus { border-color: var(--green); }
   aspect-ratio: 1;
   border-radius: 8px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
-  width: 230px;
+  width: 180px;
 }
 
 .playlist-cover.big small {
-  font-size: clamp(1.15rem, 3.3vw, 2.15rem);
+  font-size: clamp(1rem, 2.3vw, 1.65rem);
   letter-spacing: 0;
 }
 
@@ -1976,7 +1999,7 @@ select:focus { border-color: var(--green); }
 }
 
 .playlist-hero h2 {
-  font-size: clamp(3rem, 7vw, 6.7rem);
+  font-size: clamp(2.5rem, 5.4vw, 5rem);
   line-height: 0.95;
   margin: 10px 0 16px;
   overflow-wrap: anywhere;
@@ -4116,7 +4139,8 @@ body {
   }
 
   .library-list .liked-cover,
-  .library-list .folder-cover {
+  .library-list .folder-cover,
+  .library-list .playlist-cover {
     height: 56px !important;
     width: 56px !important;
   }
@@ -4129,7 +4153,8 @@ body {
   }
 
   .liked-cover.big,
-  .folder-cover.big {
+  .folder-cover.big,
+  .playlist-cover.big {
     width: 170px !important;
   }
 
@@ -4324,9 +4349,10 @@ body {
   }
 
   .liked-cover.big,
-  .folder-cover.big {
+  .folder-cover.big,
+  .playlist-cover.big {
     justify-self: center !important;
-    width: min(62vw, 220px) !important;
+    width: min(52vw, 180px) !important;
   }
 
   .playlist-hero h2 {
