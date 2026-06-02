@@ -3535,7 +3535,6 @@ export function App() {
                       >
                         <span className={`playlist-cover ${isLikesFolder ? 'liked' : ''}`}>
                           {folderCoverUrl ? <img src={folderCoverUrl} alt="" /> : null}
-                          <small>{folderName}</small>
                           {isLikesFolder && !folderCoverUrl ? <Heart size={30} fill="currentColor" /> : null}
                           {!isLikesFolder && !folderCoverUrl ? <Music2 size={24} /> : null}
                         </span>
@@ -3553,7 +3552,6 @@ export function App() {
                 <header className="playlist-hero" style={{ '--playlist-color': activeFolderColor, '--playlist-cover': activeFolderCoverUrl ? `url("${activeFolderCoverUrl}")` : 'none' }}>
                   <div className={`playlist-cover big ${isLikesFolderName(activeFolder?.name) || activeFolder?.is_preview ? 'liked' : ''}`}>
                     {activeFolderCoverUrl ? <img src={activeFolderCoverUrl} alt="" /> : null}
-                    <small>{isLikesFolderName(activeFolder?.name) || activeFolder?.is_preview ? 'Tus me gusta' : activeFolder?.name}</small>
                     {isLikesFolderName(activeFolder?.name) || activeFolder?.is_preview ? (!activeFolderCoverUrl && <Heart size={82} fill="currentColor" />) : (!activeFolderCoverUrl && <Music2 size={62} />)}
                   </div>
                   <div>
@@ -3572,7 +3570,7 @@ export function App() {
                   {!activeFolder?.is_preview && activeFolder?.owner_id === user.id && (
                     <label className="playlist-color-inline" title="Cambiar color de playlist">
                       <input type="color" value={activeFolderColor} onChange={(event) => updatePlaylistColor(activeFolder, event.target.value)} />
-                      Color
+                      Color de playlist
                     </label>
                   )}
                   <span>Orden personalizado</span>
