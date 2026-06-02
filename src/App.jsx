@@ -1489,6 +1489,21 @@ export function App() {
   async function loadFolders() {
     if (!user || !folderTablesReady) return;
 
+    function loadCachedFolders(messageText = '') {
+      try {
+        const cached = JSON.parse(localStorage.getItem(`offlineFolders:${user.id}`) || '{"folders":[],"folderTracks":[]}');
+        setFolders(cached.folders ?? []);
+        setFolderTracks(cached.folderTracks ?? []);
+        if (cached.folders?.[0] && activeFolderId === 'likes-preview') {
+          setActiveFolderId(cached.folders[0].id);
+        }
+        if (messageText) setMessage(messageText);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
     // Cargo mis carpetas y las carpetas que otros usuarios compartieron conmigo.
     const { data: ownFolders, error: ownError } = await supabase
       .from('playlist_folders')
@@ -1499,6 +1514,7 @@ export function App() {
     if (ownError) {
       if (isNetworkFetchError(ownError)) {
         setNetworkOffline(true);
+        if (loadCachedFolders('Sin internet: usando tu biblioteca guardada en este teléfono.')) return;
         return;
       }
 
@@ -1522,6 +1538,7 @@ export function App() {
     if (sharedError) {
       if (isNetworkFetchError(sharedError)) {
         setNetworkOffline(true);
+        if (loadCachedFolders('Sin internet: usando tu biblioteca guardada en este teléfono.')) return;
         return;
       }
 
@@ -1557,6 +1574,7 @@ export function App() {
 
     if (merged.length === 0) {
       setFolderTracks([]);
+      localStorage.setItem(`offlineFolders:${user.id}`, JSON.stringify({ folders: merged, folderTracks: [] }));
       return;
     }
 
@@ -1570,6 +1588,7 @@ export function App() {
     if (itemsError) {
       if (isNetworkFetchError(itemsError)) {
         setNetworkOffline(true);
+        if (loadCachedFolders('Sin internet: usando tu biblioteca guardada en este teléfono.')) return;
         return;
       }
 
@@ -1585,6 +1604,8 @@ export function App() {
     }
 
     setFolderTracks(items ?? []);
+    localStorage.setItem(`offlineFolders:${user.id}`, JSON.stringify({ folders: merged, folderTracks: items ?? [] }));
+    cachePublicAudioTracksForOffline((items ?? []).map((item) => item.tracks).filter(Boolean), 40);
   }
 
   async function loadProfile(userId) {
@@ -2221,6 +2242,10 @@ export function App() {
       return false;
     }
 
+    if (isOfflineCapableTrack(track)) {
+      cacheTrackForOffline(track, false);
+    }
+
     setMessage(successMessage);
     showSaveNotice(successMessage);
     loadFolders();
@@ -2682,7 +2707,7 @@ export function App() {
     }
   }
 
-  async function cachePublicAudioTracksForOffline(trackList) {
+  async function cachePublicAudioTracksForOffline(trackList, limit = 8) {
     if (!navigator.onLine || !('caches' in window)) return;
 
     const publicAudioTracks = trackList.filter((track) => (
@@ -2690,7 +2715,7 @@ export function App() {
     ));
     if (publicAudioTracks.length === 0) return;
 
-    for (const track of publicAudioTracks.slice(0, 8)) {
+    for (const track of publicAudioTracks.slice(0, limit)) {
       await cacheTrackForOffline(track, false);
     }
   }

@@ -1,0 +1,9 @@
+{
+  "appId": "com.shigatsu.nouta",
+  "appName": "Shigatsu no Uta",
+  "webDir": "dist",
+  "appendUserAgent": "ShigatsuAndroidApp",
+  "server": {
+    "androidScheme": "https"
+  }
+}
