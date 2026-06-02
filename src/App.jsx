@@ -992,8 +992,11 @@ export function App() {
       if (librarySortMode === 'name') return (a.name || '').localeCompare(b.name || '');
       return new Date(b.created_at || 0) - new Date(a.created_at || 0);
     });
-    return [...likes, ...sortedRest];
-  }, [libraryFolders, librarySortMode]);
+    const sortedFolders = [...likes, ...sortedRest];
+    if (!appOfflineMode) return sortedFolders;
+
+    return sortedFolders.filter((folder) => getFolderItems(folder).length > 0);
+  }, [appOfflineMode, canCurrentUserSeeTrack, folderTracks, libraryFolders, librarySortMode, likesFolders, offlineTrackIds]);
   const activeFolder = useMemo(
     () => libraryFolders.find((folder) => folder.id === activeFolderId) ?? visibleLibraryFolders[0],
     [activeFolderId, libraryFolders, visibleLibraryFolders]
@@ -1384,17 +1387,25 @@ export function App() {
     }
 
     if (typeof window.MediaMetadata === 'function') {
+      const artworkSrc = currentTrack.cover_url || getDisplayChannelByGenre(currentTrack.genre).image;
+      const absoluteArtworkSrc = (() => {
+        try {
+          return new URL(artworkSrc, window.location.href).href;
+        } catch {
+          return artworkSrc;
+        }
+      })();
+      const artworkSizes = ['96x96', '128x128', '192x192', '256x256', '384x384', '512x512'];
+
       navigator.mediaSession.metadata = new window.MediaMetadata({
         title: currentTrack.title || brandName,
         artist: currentTrack.artist || brandName,
         album: currentTrack.album || currentTrack.genre || '',
-        artwork: [
-          {
-            src: currentTrack.cover_url || getDisplayChannelByGenre(currentTrack.genre).image,
-            sizes: '512x512',
-            type: 'image/png'
-          }
-        ]
+        artwork: artworkSizes.map((sizes) => ({
+          src: absoluteArtworkSrc,
+          sizes,
+          type: 'image/png'
+        }))
       });
     }
 
@@ -1404,7 +1415,32 @@ export function App() {
       play: () => setIsPlaying(true),
       pause: () => setIsPlaying(false),
       nexttrack: playNextFromQueue,
-      previoustrack: playPreviousFromQueue
+      previoustrack: playPreviousFromQueue,
+      seekbackward: (event) => {
+        const step = Number(event.seekOffset || 10);
+        if (currentTrackIsYoutube && youtubePlayerRef.current?.seekTo) {
+          youtubePlayerRef.current.seekTo(Math.max(0, currentTime - step), true);
+          return;
+        }
+        if (audioRef.current) audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - step);
+      },
+      seekforward: (event) => {
+        const step = Number(event.seekOffset || 10);
+        if (currentTrackIsYoutube && youtubePlayerRef.current?.seekTo) {
+          youtubePlayerRef.current.seekTo(Math.min(duration || currentTime + step, currentTime + step), true);
+          return;
+        }
+        if (audioRef.current) audioRef.current.currentTime = Math.min(audioRef.current.duration || audioRef.current.currentTime + step, audioRef.current.currentTime + step);
+      },
+      seekto: (event) => {
+        if (typeof event.seekTime !== 'number') return;
+        if (currentTrackIsYoutube && youtubePlayerRef.current?.seekTo) {
+          youtubePlayerRef.current.seekTo(event.seekTime, true);
+          return;
+        }
+        if (audioRef.current) audioRef.current.currentTime = event.seekTime;
+      },
+      stop: () => setIsPlaying(false)
     };
 
     for (const [action, handler] of Object.entries(handlers)) {
@@ -1424,7 +1460,7 @@ export function App() {
         }
       }
     };
-  }, [currentTrack?.id, currentTrack?.title, currentTrack?.artist, currentTrack?.album, currentTrack?.cover_url, currentTrack?.genre, isPlaying, playbackQueue, queueIndex, appOfflineMode, offlineTrackIds]);
+  }, [currentTrack?.id, currentTrack?.title, currentTrack?.artist, currentTrack?.album, currentTrack?.cover_url, currentTrack?.genre, currentTrackIsYoutube, currentTime, duration, isPlaying, playbackQueue, queueIndex, appOfflineMode, offlineTrackIds]);
 
   useEffect(() => {
     if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState || !duration) return;
@@ -3199,9 +3235,10 @@ export function App() {
                   </button>
                   {canStream && (
                     <button
-                      className={`like-button ${currentTrackOffline ? 'liked' : ''}`}
+                      className={`like-button offline-save-button ${currentTrackOffline ? 'offline-ready' : ''}`}
                       type="button"
                       onClick={() => cacheTrackForOffline(currentTrack)}
+                      disabled={currentTrackOffline}
                       title="Guardar para escuchar sin internet"
                     >
                       <Download size={18} />
