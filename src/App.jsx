@@ -404,6 +404,8 @@ export function App() {
   const [playlistQuery, setPlaylistQuery] = useState('');
   const [playlistGenreFilter, setPlaylistGenreFilter] = useState('all');
   const [playlistSortMode, setPlaylistSortMode] = useState('custom');
+  const [catalogSearchOpen, setCatalogSearchOpen] = useState(false);
+  const [catalogQuery, setCatalogQuery] = useState('');
   const [librarySortMode, setLibrarySortMode] = useState('recent');
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [trackForm, setTrackForm] = useState(emptyTrackForm);
@@ -883,6 +885,11 @@ export function App() {
     setPlaylistSearchOpen(false);
   }, [activeFolderId]);
 
+  useEffect(() => {
+    setCatalogQuery('');
+    setCatalogSearchOpen(false);
+  }, [openedCatalog?.id]);
+
   const uploadGenreChoices = useMemo(() => ([
     ...channels.map((channel) => ({ value: channel.id, label: channel.name })),
     ...customGenreOptions.map((genre) => ({ value: genre, label: genre, custom: true }))
@@ -1027,10 +1034,18 @@ export function App() {
   }, [baseActiveFolderItems, playlistGenreFilter, playlistQuery, playlistSortMode]);
   const activeFolderColor = getFolderDisplayColor(activeFolder);
   const activeFolderCoverUrl = getFolderCoverUrl(activeFolder, baseActiveFolderItems);
-  const openedCatalogTracks = useMemo(() => {
+  const baseOpenedCatalogTracks = useMemo(() => {
     if (!openedCatalog) return [];
     return playablePublicTracks.filter((track) => trackMatchesChannel(track, openedCatalog));
   }, [openedCatalog, playablePublicTracks]);
+  const openedCatalogTracks = useMemo(() => {
+    const normalizedQuery = catalogQuery.trim().toLowerCase();
+    if (!normalizedQuery) return baseOpenedCatalogTracks;
+
+    return baseOpenedCatalogTracks.filter((track) => (
+      [track.title, track.artist, track.album, track.genre].join(' ').toLowerCase().includes(normalizedQuery)
+    ));
+  }, [baseOpenedCatalogTracks, catalogQuery]);
 
   function getDisplayChannelByGenre(genre) {
     const customChannel = customGenreChannels.find((channel) => normalizeFolderName(channel.customGenre) === normalizeFolderName(genre));
@@ -2753,6 +2768,25 @@ export function App() {
     playTrackQueue(queue, index);
   }
 
+  function toggleCatalogTrack(index) {
+    const selectedTrack = openedCatalogTracks[index];
+    if (!selectedTrack) return;
+
+    if (currentTrack?.id === selectedTrack.id) {
+      setIsPlaying((playing) => !playing);
+      return;
+    }
+
+    playTrackQueue(openedCatalogTracks, index);
+  }
+
+  function saveCatalogTrack() {
+    const currentBelongsToCatalog = currentTrack && openedCatalogTracks.some((track) => track.id === currentTrack.id);
+    const trackToSave = currentBelongsToCatalog ? currentTrack : openedCatalogTracks[0];
+    if (!trackToSave) return;
+    addTrackToLikes(trackToSave);
+  }
+
   async function searchTrackMetadata() {
     const term = [trackForm.title, trackForm.artist].filter(Boolean).join(' ').trim();
 
@@ -3308,7 +3342,7 @@ export function App() {
               </div>
 
               {openedCatalog && (
-                <article className="catalog-detail" style={{ '--catalog-accent': openedCatalog.accent }}>
+                <article className="catalog-detail" style={{ '--catalog-accent': openedCatalog.accent, '--playlist-color': openedCatalog.accent }}>
                   <header className="catalog-hero">
                     <div className="catalog-cover">
                       <img src={openedCatalog.image} alt={`${openedCatalog.name} Mix`} />
@@ -3331,17 +3365,17 @@ export function App() {
                     >
                       {currentTrack && openedCatalogTracks.some((track) => track.id === currentTrack.id) && isPlaying ? <Pause size={26} /> : <Play size={26} fill="currentColor" />}
                     </button>
-                    <button type="button"><Plus size={25} /></button>
-                    <button type="button"><Search size={22} /></button>
+                    <button type="button" disabled={!baseOpenedCatalogTracks[0]} onClick={saveCatalogTrack} title="Guardar canción de esta categoría"><Plus size={25} /></button>
+                    <button className={catalogSearchOpen ? 'active' : ''} type="button" onClick={() => setCatalogSearchOpen((open) => !open)} title="Buscar en categoría"><Search size={22} /></button>
                     <span>Orden personalizado</span>
                   </div>
 
-                  <div className="playlist-chips">
-                    <span>Descubrir más</span>
-                    <span>{openedCatalog.name}</span>
-                    <span>Favoritas</span>
-                    <span>Nuevas</span>
-                  </div>
+                  {catalogSearchOpen && (
+                    <label className="playlist-search-inline catalog-search-inline">
+                      <Search size={18} />
+                      <input value={catalogQuery} onChange={(event) => setCatalogQuery(event.target.value)} placeholder="Buscar dentro de esta categoría" />
+                    </label>
+                  )}
 
                   <div className="catalog-table">
                     <div className="playlist-table-head">
@@ -3354,18 +3388,32 @@ export function App() {
                       <p className="empty-state">{appOfflineMode ? 'No hay canciones guardadas sin internet en este catálogo.' : 'todavía no hay Canciones subidas en este catálogo.'}</p>
                     )}
                     {openedCatalogTracks.map((track, index) => (
-                      <div className={`playlist-track ${currentTrack?.id === track.id ? 'playing' : ''}`} key={track.id}>
-                        <span>{currentTrack?.id === track.id ? <Play size={16} fill="currentColor" /> : index + 1}</span>
+                      <div
+                        className={`playlist-track ${currentTrack?.id === track.id ? 'playing' : ''}`}
+                        key={track.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => toggleCatalogTrack(index)}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Enter' && event.key !== ' ') return;
+                          event.preventDefault();
+                          toggleCatalogTrack(index);
+                        }}
+                      >
+                        <span>{currentTrack?.id === track.id && isPlaying ? <Pause size={16} /> : <Play size={16} fill="currentColor" />}</span>
                         <img src={track.cover_url || openedCatalog.image} alt={track.title} />
-                        <button type="button" onClick={() => playTrackQueue(openedCatalogTracks, index)}>
+                        <div className="playlist-track-info">
                           <strong>{track.title}</strong>
                           <small>{track.artist}</small>
-                        </button>
+                        </div>
                         <span>{track.album || 'Single'}</span>
                         <button
                           className={`like-icon-button ${likedTrackIds.has(track.id) ? 'liked' : ''}`}
                           type="button"
-                          onClick={() => addTrackToLikes(track)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            addTrackToLikes(track);
+                          }}
                           title="Guardar en Me gusta"
                         >
                           <Heart size={16} fill={likedTrackIds.has(track.id) ? 'currentColor' : 'none'} />

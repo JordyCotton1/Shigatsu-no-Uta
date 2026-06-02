@@ -2173,11 +2173,19 @@ select:focus { border-color: var(--green); }
 }
 
 .playlist-track-info {
-  background: transparent;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
   color: #fff;
   min-width: 0;
   padding: 0;
   text-align: left;
+}
+
+.catalog-table .playlist-track,
+.catalog-table .playlist-track:hover,
+.catalog-table .playlist-track.playing {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--catalog-accent, #ff8fbd) 12%, #120911 88%), rgba(7, 5, 10, 0.94)) !important;
 }
 
 .playlist-track small {
@@ -2996,7 +3004,7 @@ body {
   position: absolute;
   z-index: 1;
   left: clamp(34px, 4vw, 72px);
-  top: clamp(34px, 4vw, 66px);
+  top: clamp(14px, 2.4vw, 34px);
   width: min(50%, 760px);
   height: auto;
   pointer-events: none;
