@@ -42,9 +42,14 @@ create table if not exists public.playlist_folders (
   owner_id uuid not null references public.profiles(id) on delete cascade,
   name text not null,
   is_shared boolean not null default false,
+  color text default '#1ed760',
+  cover_url text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.playlist_folders add column if not exists color text default '#1ed760';
+alter table public.playlist_folders add column if not exists cover_url text;
 
 create table if not exists public.playlist_tracks (
   folder_id uuid not null references public.playlist_folders(id) on delete cascade,

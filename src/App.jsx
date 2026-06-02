@@ -145,8 +145,11 @@ const emptyTrackForm = {
 const emptyFolderForm = {
   name: 'Me gusta',
   is_shared: false,
-  share_email: ''
+  share_email: '',
+  color: '#1ed760'
 };
+
+const playlistColorOptions = ['#1ed760', '#ff7db6', '#8b5cf6', '#4dd7ff', '#f97316', '#f43f5e', '#fbbf24', '#22c55e'];
 
 const genreAliases = [
   { match: ['anime', 'j-pop', 'jpop', 'soundtrack'], genre: 'anime' },
@@ -176,6 +179,12 @@ function getAvatar(user, profile) {
 
 function normalizeFolderName(name = '') {
   return name.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function getGeneratedPlaylistColor(folder) {
+  const palette = playlistColorOptions;
+  const hash = Math.abs(hashText(folder?.id || folder?.name || 'playlist'));
+  return palette[hash % palette.length];
 }
 
 function isLikesFolderName(name = '') {
@@ -874,6 +883,34 @@ export function App() {
     );
   }, [folderTracks, likesFolders]);
   const currentTrackLiked = Boolean(currentTrack && likedTrackIds.has(currentTrack.id));
+  function getFolderDisplayColor(folder) {
+    return folder?.color || getGeneratedPlaylistColor(folder);
+  }
+
+  function getFolderItems(folder) {
+    if (!folder || folder.is_preview) return [];
+
+    if (isLikesFolderName(folder.name)) {
+      const likesFolderIds = new Set(likesFolders.map((likesItem) => likesItem.id));
+      const uniqueItems = [];
+      const seenTracks = new Set();
+
+      for (const item of folderTracks) {
+        if (!likesFolderIds.has(item.folder_id) || !canCurrentUserSeeTrack(item.tracks) || !isTrackPlayableNow(item.tracks) || seenTracks.has(item.track_id)) continue;
+        seenTracks.add(item.track_id);
+        uniqueItems.push(item);
+      }
+
+      return uniqueItems;
+    }
+
+    return folderTracks.filter((item) => item.folder_id === folder.id && canCurrentUserSeeTrack(item.tracks) && isTrackPlayableNow(item.tracks));
+  }
+
+  function getFolderCoverUrl(folder, items = getFolderItems(folder)) {
+    return folder?.cover_url || items.find((item) => item.tracks?.cover_url)?.tracks.cover_url || '';
+  }
+
   const libraryFolders = useMemo(() => {
     const hasLikes = folders.some((folder) => isLikesFolderName(folder.name));
     const previewLikes = {
@@ -881,7 +918,8 @@ export function App() {
       owner_id: user?.id,
       name: 'Tus me gusta',
       is_preview: true,
-      is_shared: false
+      is_shared: false,
+      color: '#7f63ff'
     };
 
     const uniqueFolders = [];
@@ -905,24 +943,9 @@ export function App() {
     () => libraryFolders.find((folder) => folder.id === activeFolderId) ?? libraryFolders[0],
     [activeFolderId, libraryFolders]
   );
-  const activeFolderItems = useMemo(() => {
-    if (!activeFolder || activeFolder.is_preview) return [];
-    if (isLikesFolderName(activeFolder.name)) {
-      const likesFolderIds = new Set(likesFolders.map((folder) => folder.id));
-      const uniqueItems = [];
-      const seenTracks = new Set();
-
-      for (const item of folderTracks) {
-        if (!likesFolderIds.has(item.folder_id) || !canCurrentUserSeeTrack(item.tracks) || !isTrackPlayableNow(item.tracks) || seenTracks.has(item.track_id)) continue;
-        seenTracks.add(item.track_id);
-        uniqueItems.push(item);
-      }
-
-      return uniqueItems;
-    }
-
-    return folderTracks.filter((item) => item.folder_id === activeFolder.id && canCurrentUserSeeTrack(item.tracks) && isTrackPlayableNow(item.tracks));
-  }, [activeFolder, appOfflineMode, canCurrentUserSeeTrack, folderTracks, likesFolders, offlineTrackIds]);
+  const activeFolderItems = useMemo(() => getFolderItems(activeFolder), [activeFolder, appOfflineMode, canCurrentUserSeeTrack, folderTracks, likesFolders, offlineTrackIds]);
+  const activeFolderColor = getFolderDisplayColor(activeFolder);
+  const activeFolderCoverUrl = getFolderCoverUrl(activeFolder, activeFolderItems);
   const openedCatalogTracks = useMemo(() => {
     if (!openedCatalog) return [];
     return playablePublicTracks.filter((track) => trackMatchesChannel(track, openedCatalog));
@@ -1994,16 +2017,31 @@ export function App() {
       return existingFolder;
     }
 
+    const folderPayload = {
+      owner_id: user.id,
+      name: requestedName,
+      is_shared: folderForm.is_shared,
+      color: folderForm.color || getGeneratedPlaylistColor({ name: requestedName })
+    };
+
     // Creo una carpeta propia para guardar canciones como Me gusta, Rock para estudiar, etc.
-    const { data: folder, error } = await supabase
+    let { data: folder, error } = await supabase
       .from('playlist_folders')
-      .insert({
-        owner_id: user.id,
-        name: requestedName,
-        is_shared: folderForm.is_shared
-      })
+      .insert(folderPayload)
       .select('*')
       .single();
+
+    if (error?.message?.includes('color')) {
+      const fallbackPayload = { ...folderPayload };
+      delete fallbackPayload.color;
+      const retry = await supabase
+        .from('playlist_folders')
+        .insert(fallbackPayload)
+        .select('*')
+        .single();
+      folder = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       setMessage(error.message);
@@ -2021,6 +2059,23 @@ export function App() {
     if (options.selectForTrack) setSelectedFolderId(folder.id);
     loadFolders();
     return folder;
+  }
+
+  async function updatePlaylistColor(folder, color) {
+    if (!folder || folder.is_preview || folder.owner_id !== user?.id) return;
+
+    setFolders((current) => current.map((item) => item.id === folder.id ? { ...item, color } : item));
+
+    const { error } = await supabase
+      .from('playlist_folders')
+      .update({ color, updated_at: new Date().toISOString() })
+      .eq('id', folder.id);
+
+    if (error) {
+      setMessage(error.message?.includes('color')
+        ? 'Agrega la columna color en Supabase para guardar colores de playlist.'
+        : error.message);
+    }
   }
 
   function showFolderSetupMessage(error) {
@@ -2097,15 +2152,30 @@ export function App() {
       return null;
     }
 
-    const { data: folder, error } = await supabase
+    let { data: folder, error } = await supabase
       .from('playlist_folders')
       .insert({
         owner_id: user.id,
         name: 'Me gusta',
-        is_shared: false
+        is_shared: false,
+        color: '#7f63ff'
       })
       .select('*')
       .single();
+
+    if (error?.message?.includes('color')) {
+      const retry = await supabase
+        .from('playlist_folders')
+        .insert({
+          owner_id: user.id,
+          name: 'Me gusta',
+          is_shared: false
+        })
+        .select('*')
+        .single();
+      folder = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       showFolderSetupMessage(error);
@@ -3409,6 +3479,22 @@ export function App() {
                       Nombre
                       <input value={folderForm.name} onChange={(event) => setFolderForm({ ...folderForm, name: event.target.value })} placeholder="Nueva playlist" />
                     </label>
+                    <label>
+                      Color
+                      <input type="color" value={folderForm.color} onChange={(event) => setFolderForm({ ...folderForm, color: event.target.value })} />
+                    </label>
+                    <div className="playlist-color-picker" aria-label="Colores de playlist">
+                      {playlistColorOptions.map((color) => (
+                        <button
+                          className={folderForm.color === color ? 'selected' : ''}
+                          key={color}
+                          type="button"
+                          onClick={() => setFolderForm({ ...folderForm, color })}
+                          style={{ '--swatch': color }}
+                          title={color}
+                        />
+                      ))}
+                    </div>
                     <label className="check-row">
                       <input type="checkbox" checked={folderForm.is_shared} onChange={(event) => setFolderForm({ ...folderForm, is_shared: event.target.checked })} />
                       Compartida
@@ -3437,15 +3523,21 @@ export function App() {
                       : folderTracks.filter((item) => item.folder_id === folder.id && canCurrentUserSeeTrack(item.tracks));
                     const uniqueTrackCount = new Set(items.map((item) => item.track_id)).size;
                     const folderName = isLikesFolder ? 'Tus me gusta' : folder.name;
+                    const folderColor = getFolderDisplayColor(folder);
+                    const folderCoverUrl = getFolderCoverUrl(folder, items);
                     return (
                       <button
                         className={activeFolder?.id === folder.id ? 'active' : ''}
                         key={folder.id}
                         type="button"
                         onClick={() => setActiveFolderId(folder.id)}
+                        style={{ '--playlist-color': folderColor }}
                       >
-                        <span className={isLikesFolder ? 'liked-cover' : 'folder-cover'}>
-                          {isLikesFolder ? <Heart size={30} fill="currentColor" /> : <Music2 size={24} />}
+                        <span className={`playlist-cover ${isLikesFolder ? 'liked' : ''}`}>
+                          {folderCoverUrl ? <img src={folderCoverUrl} alt="" /> : null}
+                          <small>{folderName}</small>
+                          {isLikesFolder && !folderCoverUrl ? <Heart size={30} fill="currentColor" /> : null}
+                          {!isLikesFolder && !folderCoverUrl ? <Music2 size={24} /> : null}
                         </span>
                         <span>
                           <strong>{folderName}</strong>
@@ -3457,10 +3549,12 @@ export function App() {
                 </div>
               </aside>
 
-              <article className="spotify-playlist">
-                <header className="playlist-hero">
-                  <div className={isLikesFolderName(activeFolder?.name) || activeFolder?.is_preview ? 'liked-cover big' : 'folder-cover big'}>
-                    {isLikesFolderName(activeFolder?.name) || activeFolder?.is_preview ? <Heart size={82} fill="currentColor" /> : <Music2 size={62} />}
+              <article className="spotify-playlist" style={{ '--playlist-color': activeFolderColor }}>
+                <header className="playlist-hero" style={{ '--playlist-color': activeFolderColor, '--playlist-cover': activeFolderCoverUrl ? `url("${activeFolderCoverUrl}")` : 'none' }}>
+                  <div className={`playlist-cover big ${isLikesFolderName(activeFolder?.name) || activeFolder?.is_preview ? 'liked' : ''}`}>
+                    {activeFolderCoverUrl ? <img src={activeFolderCoverUrl} alt="" /> : null}
+                    <small>{isLikesFolderName(activeFolder?.name) || activeFolder?.is_preview ? 'Tus me gusta' : activeFolder?.name}</small>
+                    {isLikesFolderName(activeFolder?.name) || activeFolder?.is_preview ? (!activeFolderCoverUrl && <Heart size={82} fill="currentColor" />) : (!activeFolderCoverUrl && <Music2 size={62} />)}
                   </div>
                   <div>
                     <span>Playlist</span>
@@ -3475,6 +3569,12 @@ export function App() {
                   </button>
                   <button type="button" disabled={!currentTrack || activeFolder?.is_preview} onClick={() => addCurrentTrackToFolder(activeFolder.id)}><Plus size={26} /></button>
                   <button type="button"><Search size={22} /></button>
+                  {!activeFolder?.is_preview && activeFolder?.owner_id === user.id && (
+                    <label className="playlist-color-inline" title="Cambiar color de playlist">
+                      <input type="color" value={activeFolderColor} onChange={(event) => updatePlaylistColor(activeFolder, event.target.value)} />
+                      Color
+                    </label>
+                  )}
                   <span>Orden personalizado</span>
                 </div>
 
